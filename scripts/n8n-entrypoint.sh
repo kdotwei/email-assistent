@@ -143,16 +143,43 @@ stop_n8n() {
   exit 143
 }
 
+forward_n8n_logs() {
+  editor_line_seen=0
+
+  while IFS= read -r log_line; do
+    echo "$log_line"
+
+    if [ "$editor_line_seen" -eq 1 ] && [ -n "$log_line" ]; then
+      echo "n8n started; editor is ready at ${log_line}"
+      touch "$N8N_STARTED_MARKER"
+      editor_line_seen=2
+      continue
+    fi
+
+    if [ "$log_line" = "Editor is now accessible via:" ]; then
+      editor_line_seen=1
+    fi
+  done < "$N8N_LOG_PIPE"
+}
+
 wait_for_n8n() {
-  until wget -q -O - http://127.0.0.1:5678/healthz >/dev/null 2>&1; do
+  attempts=0
+
+  until [ -f "$N8N_STARTED_MARKER" ]; do
     if ! kill -0 "$N8N_PID" 2>/dev/null; then
       wait "$N8N_PID"
       exit $?
     fi
+
+    attempts=$((attempts + 1))
+    if [ "$attempts" -ge 60 ] && wget -q -O - http://127.0.0.1:5678/healthz >/dev/null 2>&1; then
+      echo "n8n started; health check is passing at http://localhost:5678"
+      touch "$N8N_STARTED_MARKER"
+      return 0
+    fi
+
     sleep 2
   done
-
-  echo "n8n started; editor is ready at http://localhost:5678"
 }
 
 if [ -n "${NOTION_TOKEN:-}" ]; then
@@ -181,10 +208,22 @@ fi
 
 import_workflows
 
-/docker-entrypoint.sh start &
+N8N_LOG_PIPE="${TMP_DIR}/n8n-startup.log.pipe"
+N8N_STARTED_MARKER="${TMP_DIR}/n8n.started"
+mkfifo "$N8N_LOG_PIPE"
+
+forward_n8n_logs &
+N8N_LOG_PID="$!"
+
+/docker-entrypoint.sh start > "$N8N_LOG_PIPE" 2>&1 &
 N8N_PID="$!"
 
 trap stop_n8n INT TERM
 
 wait_for_n8n
+set +e
 wait "$N8N_PID"
+N8N_EXIT_CODE="$?"
+wait "$N8N_LOG_PID" 2>/dev/null || true
+set -e
+exit "$N8N_EXIT_CODE"
