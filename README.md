@@ -24,8 +24,11 @@ This repository is still in the setup phase.
 |   `-- IDEAS_MEMO.md
 |-- langflow/
 |-- n8n/
+|   |-- credentials/
 |   |-- dockerfile
 |   `-- run.sh
+|-- scripts/
+|   `-- n8n-entrypoint.sh
 `-- docker-compose.yaml
 ```
 
@@ -40,7 +43,7 @@ Configured environment values:
 - `GENERIC_TIMEZONE=Asia/Taipei`
 - `TZ=Asia/Taipei`
 - `N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true`
-- `N8N_RUNNERS_ENABLED=true`
+- `N8N_ENCRYPTION_KEY` from `.env`
 
 ### Langflow
 
@@ -72,10 +75,15 @@ docker compose version
 From the repository root:
 
 ```bash
+cp .env.example .env
 docker compose up -d --wait
 ```
 
-`n8n` imports the bundled workflow before it becomes ready, so `--wait` is recommended to keep the command running until the service passes its health check.
+Before starting n8n, edit `.env` and set `N8N_ENCRYPTION_KEY` to a stable random value. Production environments must set this value explicitly. Do not rotate it casually: if it changes, n8n may no longer be able to decrypt existing credentials in the `n8n_data` volume.
+
+`n8n` imports bundled workflows and supported credentials before it starts the server. The startup script then waits until n8n answers `/healthz` and prints `n8n started; editor is ready at http://localhost:5678`. `--wait` is still recommended so Docker Compose waits for the service health check too.
+
+The root `.env` file is injected into the `n8n` container, so workflow expressions can read values such as `{{$env.NOTION_TOKEN}}`, `{{$env.GOOGLE_CLIENT_ID}}`, and `{{$env.GOOGLE_CLIENT_SECRET}}`.
 
 To stop the services:
 
@@ -101,7 +109,48 @@ chmod +x n8n/run.sh
 ./n8n/run.sh
 ```
 
-This script creates the `n8n_data` volume and starts an `n8n` container directly with Docker.
+This script creates the `n8n_data` volume and starts an `n8n` container directly with Docker. It uses the same `.env`, workflow import, and credential import startup script as Docker Compose.
+
+## Automatic Credential Import
+
+The `n8n` container uses `scripts/n8n-entrypoint.sh` as its startup script. On container startup, the script checks `N8N_ENCRYPTION_KEY`, generates temporary credential JSON files in `/tmp`, imports the available credentials with `n8n import:credentials`, imports bundled workflow JSON files from `n8n/`, and then starts the n8n server.
+
+Credential templates live in `n8n/credentials/` and do not contain real secrets. The generated files are created only inside the container and are removed when startup finishes.
+
+Set these values in `.env` as needed:
+
+```env
+N8N_ENCRYPTION_KEY=
+NOTION_TOKEN=
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+LANGFLOW_API_KEY=
+OPENAI_API_KEY=
+```
+
+Supported automatic credentials:
+
+- `NOTION_TOKEN` imports a `Notion account` credential using the n8n `notionApi` type.
+- `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` import a `Gmail account` OAuth2 credential using the n8n `gmailOAuth2` type.
+- `LANGFLOW_API_KEY` imports a `Langflow API Key` header credential for HTTP Request nodes.
+- `OPENAI_API_KEY` imports an `OpenAI API` credential using the n8n `openAiApi` type.
+
+Google OAuth is only partially automated. The startup import can prefill the Google Client ID and Client Secret, but it cannot complete Google consent or create Gmail access and refresh tokens. After startup, open the `Gmail account` credential in the n8n UI and run `Sign in with Google` once.
+
+To avoid duplicate credentials, the script checks for existing credentials by name and type and writes marker files under `/home/node/.n8n/.startup-imports` in the persistent `n8n_data` volume. If you change `.env` and need to import again, remove the relevant marker file from the container volume and delete or rename the old credential in the n8n UI first. To force all startup imports again without deleting the data volume:
+
+```bash
+docker compose exec n8n rm -f /home/node/.n8n/.startup-imports/*.imported
+docker compose restart n8n
+```
+
+To disable automatic credential import, leave the optional credential variables empty in `.env`. `N8N_ENCRYPTION_KEY` is still required for Compose startup.
+
+Common issues:
+
+- If `N8N_ENCRYPTION_KEY` changes after credentials have been created, existing credentials may fail to decrypt. Restore the old key or recreate the credentials.
+- Google OAuth redirect URI must match the URI shown by n8n. For local Compose usage this usually points to `http://localhost:5678/rest/oauth2-credential/callback`, but always copy the value from the n8n UI.
+- `localhost` inside a container is the container itself, not the host machine. Use Docker service names such as `http://langflow:7860` for container-to-container calls on the Compose network.
 
 ## Project Direction
 
