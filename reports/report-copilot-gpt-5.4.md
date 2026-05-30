@@ -228,3 +228,62 @@
 
 ### Next Steps
 - Commit the current changes on `chore/compose-workflow-updates` when the branch contents are finalized.
+
+## [2026-05-30 22:22] Task Record
+
+### Task Description
+- Add root `.env` support so the `n8n` container can read values such as the Notion token and Google OAuth credentials.
+
+### Actions Taken
+- Modified file: `docker-compose.yaml`
+- Modified file: `README.md`
+- Modified file: `reports/report-copilot-gpt-5.4.md`
+- Created file: `.gitignore`
+- Created file: `.env`
+- Created file: `.env.example`
+- Terminal commands executed:
+  - `git status --short --branch`
+  - `docker compose config | sed -n '/n8n:/,/langflow:/p'`
+  - `docker compose up -d --force-recreate n8n && docker exec n8n /bin/sh -c 'printenv | grep -E "^(NOTION_TOKEN|GOOGLE_CLIENT_ID|GOOGLE_CLIENT_SECRET)="'`
+  - `date '+%Y-%m-%d %H:%M'`
+
+### Attempted Methods
+- Checked the current Compose file and confirmed that `n8n` did not yet load any project-level env file.
+- Added `env_file: .env` to the `n8n` service so root environment variables are injected into the running container.
+- Added a root `.env` file with the requested variables and a matching `.env.example` for onboarding and regeneration.
+- Added `.gitignore` with `.env` so the local secret-bearing file is not tracked by git.
+- Updated the README to include the `.env` setup step and documented that workflows can access the values through `{{$env.VARIABLE_NAME}}`.
+- Validated the rendered Compose config and then recreated `n8n` to confirm the variables are present inside the container at runtime.
+
+### Issues & Blockers
+- The repo still shows the existing Compose warning about the obsolete top-level `version` field; this does not block env loading.
+- `.env` is intentionally ignored by git, so it will not appear in `git status` after creation.
+
+### Next Steps
+- Replace the placeholder values in `.env` with the real credentials on the local machine if needed.
+- If additional services need the same variables later, add `env_file: .env` to those service definitions explicitly instead of assuming global propagation.
+
+## [2026-05-30 23:20] Task Record
+
+### Task Description
+- Create a dedicated git branch that matches the current n8n runtime and Compose bootstrap changes.
+
+### Actions Taken
+- Modified file: `reports/report-copilot-gpt-5.4.md`
+- Terminal commands executed:
+  - `git status --short --branch`
+  - `git diff --stat`
+  - `git branch`
+  - `date '+%Y-%m-%d %H:%M'`
+- Created and switched to branch: `feat/n8n-runtime-bootstrap`
+
+### Attempted Methods
+- Checked the working tree before branching to make sure the branch name reflected the actual edits rather than using a generic name.
+- Compared against existing local branches to avoid reusing an already-taken name.
+- Created the new branch and confirmed the full working tree moved over intact.
+
+### Issues & Blockers
+- No blocker during branch creation.
+
+### Next Steps
+- Commit the current Compose, n8n startup, credentials template, and documentation changes on `feat/n8n-runtime-bootstrap` when the contents are finalized.

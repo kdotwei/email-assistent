@@ -1,27 +1,19 @@
-version: '3.8'
-
 services:
   n8n:
     image: docker.n8n.io/n8nio/n8n
     container_name: n8n
     restart: unless-stopped
+    env_file:
+      - .env
     entrypoint:
       - /bin/sh
-      - -c
-    command:
-      - |
-        if [ ! -f /home/node/.n8n/.workflow-imported ]; then
-          /docker-entrypoint.sh import:workflow --input=/import/Workflow.json
-          touch /home/node/.n8n/.workflow-imported
-        fi
-        exec /docker-entrypoint.sh start
+      - /scripts/n8n-entrypoint.sh
     ports:
       - "5678:5678"
     environment:
       - GENERIC_TIMEZONE=Asia/Taipei
       - TZ=Asia/Taipei
       - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true
-      - N8N_RUNNERS_ENABLED=true
     healthcheck:
       test:
         - CMD-SHELL
@@ -32,7 +24,9 @@ services:
       start_period: 30s
     volumes:
       - n8n_data:/home/node/.n8n
-      - ./n8n/Workflow.json:/import/Workflow.json:ro
+      - ./scripts:/scripts:ro
+      - ./n8n:/import/workflows:ro
+      - ./n8n/credentials:/import/credentials:ro
     networks:
       - workflow_network
 
