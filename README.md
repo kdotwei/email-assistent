@@ -24,11 +24,12 @@ This repository is still in the setup phase.
 |   `-- IDEAS_MEMO.md
 |-- langflow/
 |-- n8n/
-|   |-- credentials/
+|   |-- credentials/       # credential templates (no real secrets)
+|   |-- workflow/          # bundled workflow JSON files
 |   |-- dockerfile
 |   `-- run.sh
 |-- scripts/
-|   `-- n8n-entrypoint.sh
+|   `-- n8n-entrypoint.sh  # container startup script
 `-- docker-compose.yaml
 ```
 
@@ -76,10 +77,21 @@ From the repository root:
 
 ```bash
 cp .env.example .env
+```
+
+Open `.env` and set `N8N_ENCRYPTION_KEY` to a stable random value before starting the containers. You can generate one with:
+
+```bash
+openssl rand -hex 32
+```
+
+Then start the services:
+
+```bash
 docker compose up -d --wait
 ```
 
-Before starting n8n, edit `.env` and set `N8N_ENCRYPTION_KEY` to a stable random value. Production environments must set this value explicitly. Do not rotate it casually: if it changes, n8n may no longer be able to decrypt existing credentials in the `n8n_data` volume.
+Before starting n8n, edit `.env` and set `N8N_ENCRYPTION_KEY` to a stable random value. If `N8N_ENCRYPTION_KEY` is empty, the startup script will exit immediately and the container will restart in a loop. Production environments must set this value explicitly. Do not rotate it casually: if it changes, n8n may no longer be able to decrypt existing credentials in the `n8n_data` volume.
 
 `n8n` imports bundled workflows and supported credentials before it starts the server. The startup script then waits until n8n answers `/healthz` and prints `n8n started; editor is ready at http://localhost:5678`. `--wait` is still recommended so Docker Compose waits for the service health check too.
 
@@ -113,7 +125,7 @@ This script creates the `n8n_data` volume and starts an `n8n` container directly
 
 ## Automatic Credential Import
 
-The `n8n` container uses `scripts/n8n-entrypoint.sh` as its startup script. On container startup, the script checks `N8N_ENCRYPTION_KEY`, generates temporary credential JSON files in `/tmp`, imports the available credentials with `n8n import:credentials`, imports bundled workflow JSON files from `n8n/`, and then starts the n8n server.
+The `n8n` container uses `scripts/n8n-entrypoint.sh` as its startup script. On container startup, the script checks `N8N_ENCRYPTION_KEY`, generates temporary credential JSON files in `/tmp`, imports the available credentials with `n8n import:credentials`, imports bundled workflow JSON files from `n8n/workflow/`, and then starts the n8n server.
 
 Credential templates live in `n8n/credentials/` and do not contain real secrets. The generated files are created only inside the container and are removed when startup finishes.
 

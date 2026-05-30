@@ -6,7 +6,6 @@ services:
     env_file:
       - .env
     entrypoint:
-      - /bin/sh
       - /scripts/n8n-entrypoint.sh
     ports:
       - "5678:5678"
@@ -14,6 +13,12 @@ services:
       - GENERIC_TIMEZONE=Asia/Taipei
       - TZ=Asia/Taipei
       - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true
+      - N8N_RUNNERS_ENABLED=true
+      - N8N_INSTANCE_OWNER_MANAGED_BY_ENV=true
+      - N8N_INSTANCE_OWNER_EMAIL="admin@example.com"
+      - N8N_INSTANCE_OWNER_FIRSTNAME="Admin"
+      - N8N_INSTANCE_OWNER_LASTNAME="User"
+      - N8N_INSTANCE_OWNER_PASSWORD_HASH=$$2y$$10$$d/LjIP9EvN1NZxmTfPYhMOVNxqa.zIedvap7sSdFbNRlAK94/eppa
     healthcheck:
       test:
         - CMD-SHELL
@@ -25,7 +30,7 @@ services:
     volumes:
       - n8n_data:/home/node/.n8n
       - ./scripts:/scripts:ro
-      - ./n8n:/import/workflows:ro
+      - ./n8n/workflow:/import/workflows:ro
       - ./n8n/credentials:/import/credentials:ro
     networks:
       - workflow_network

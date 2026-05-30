@@ -1,5 +1,5 @@
 {
-  "name": "My workflow",
+  "name": "Email2Notion",
   "nodes": [
     {
       "parameters": {},
@@ -22,13 +22,7 @@
       "position": [512, 0],
       "id": "edf85c61-fd5c-45a4-b427-849f86e207ce",
       "name": "Get many messages",
-      "webhookId": "353765f6-e992-48d6-bcef-507fac51337f",
-      "credentials": {
-        "gmailOAuth2": {
-          "id": "alzPOF3YipI0N8ZF",
-          "name": "Gmail account"
-        }
-      }
+      "webhookId": "353765f6-e992-48d6-bcef-507fac51337f"
     },
     {
       "parameters": {
@@ -54,13 +48,7 @@
       "typeVersion": 2.2,
       "position": [928, 432],
       "id": "dcff4de1-29be-4958-a074-004b2ab40fe9",
-      "name": "Create a database page",
-      "credentials": {
-        "notionApi": {
-          "id": "cHwhc8T5vN8dnUBd",
-          "name": "Notion account"
-        }
-      }
+      "name": "Create a database page"
     },
     {
       "parameters": {
@@ -88,13 +76,7 @@
       "typeVersion": 2.2,
       "position": [-64, 208],
       "id": "cbb87c19-d15c-429e-a5b0-7db93bffce93",
-      "name": "Get a database",
-      "credentials": {
-        "notionApi": {
-          "id": "cHwhc8T5vN8dnUBd",
-          "name": "Notion account"
-        }
-      }
+      "name": "Get a database"
     },
     {
       "parameters": {
@@ -151,13 +133,7 @@
       "typeVersion": 4.4,
       "position": [1312, 0],
       "id": "64cd9454-c0b3-40c2-98c6-db171cca2c06",
-      "name": "HTTP Request",
-      "credentials": {
-        "notionApi": {
-          "id": "cHwhc8T5vN8dnUBd",
-          "name": "Notion account"
-        }
-      }
+      "name": "HTTP Request"
     }
   ],
   "pinData": {},
