@@ -23,10 +23,7 @@
       },
       "type": "n8n-nodes-base.notion",
       "typeVersion": 2.2,
-      "position": [
-        576,
-        368
-      ],
+      "position": [576, 368],
       "id": "dcff4de1-29be-4958-a074-004b2ab40fe9",
       "name": "Create a database page",
       "credentials": {
@@ -38,14 +35,11 @@
     },
     {
       "parameters": {
-        "jsCode": "const schema = $input.first().json;\n\nconst prompt = `You are helping categorize and create tasks in a Notion database.\nHere is the database structure you must follow:\n\n${JSON.stringify(schema, null, 2)}\n\nRules:\n- \"title\" is the task name and is always required\n- \"formula\", \"rollup\", \"created_time\", \"last_edited_time\" fields are read-only — never set them\n- For \"select\" and \"multi_select\" fields, only use the provided options values exactly\n- For \"date\" fields, use ISO 8601 format (YYYY-MM-DD)\n`;\n\nreturn [{ json: { schema: prompt } }];"
+        "jsCode": "const schema = $input.first().json;\n\nconst prompt = [\n  'You are helping categorize and create tasks in a Notion database.',\n  'Here is the database structure you must follow:',\n  '',\n  JSON.stringify(schema, null, 2),\n  '',\n  'Rules:',\n  '- \"title\" is the task name and is always required',\n  '- \"formula\", \"rollup\", \"created_time\", \"last_edited_time\", \"unique_id\" fields are read-only — never set them',\n  '- For \"select\" and \"status\" fields, only use the provided options values exactly',\n  '- For \"multi_select\" fields, only use the provided options values exactly; return as an array',\n  '- For \"date\" fields, use ISO 8601 format (YYYY-MM-DD)',\n  '- Omit any field you cannot confidently infer — do not fabricate values',\n  '',\n  'Respond ONLY with a valid JSON object in this exact shape — no markdown, no backticks:',\n  '{',\n  '  \"task_name\": \"string — required\",',\n  '  \"fields\": {',\n  '    \"<FieldName>\": \"<value matching schema type and options>\"',\n  '  },',\n  '  \"confidence\": \"high | medium | low\",',\n  '  \"notes\": \"brief reasoning about inferred values\"',\n  '}'\n].join('\\n');\n\nreturn [{ json: { schema: prompt } }];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        400,
-        -144
-      ],
+      "position": [400, -144],
       "id": "3d52fbe7-9f61-4247-a8e5-0263affd447e",
       "name": "Stringify Notion database schema"
     },
@@ -63,10 +57,7 @@
       },
       "type": "n8n-nodes-base.notion",
       "typeVersion": 2.2,
-      "position": [
-        48,
-        -144
-      ],
+      "position": [48, -144],
       "id": "cbb87c19-d15c-429e-a5b0-7db93bffce93",
       "name": "Get a database",
       "credentials": {
@@ -78,27 +69,21 @@
     },
     {
       "parameters": {
-        "jsCode": "// The mock LLM node already outputs a JS object, not a JSON string\n// So we skip parsing entirely and use it directly\nconst raw = $input.first().json;\n\n// If it came from a real LLM node it would be a string — handle both cases\nlet parsed;\nif (typeof raw === \"string\") {\n  try {\n    const cleaned = raw.replace(/```json|```/g, \"\").trim();\n    parsed = JSON.parse(cleaned);\n  } catch (e) {\n    return [{ json: { success: false, error: \"JSON parse failed\", raw } }];\n  }\n} else {\n  // Already an object (mock node or well-behaved LLM node)\n  parsed = raw;\n}\n\n// Validate required fields\nif (!parsed.task_name || typeof parsed.task_name !== \"string\") {\n  return [{ json: { success: false, error: \"Missing task_name\", raw } }];\n}\n\nconst READ_ONLY_TYPES = [\"formula\", \"rollup\", \"created_time\", \"last_edited_time\"];\nconst schema = $node[\"Transform Schema\"].json.fields;\nconst schemaMap = Object.fromEntries(schema.map(f => [f.name, f]));\n\nconst validFields = {};\nconst skipped = [];\nconst invalid = [];\n\nfor (const [key, value] of Object.entries(parsed.fields ?? {})) {\n  const fieldDef = schemaMap[key];\n\n  if (!fieldDef) {\n    invalid.push({ field: key, reason: \"Not in schema\" });\n    continue;\n  }\n\n  if (READ_ONLY_TYPES.includes(fieldDef.type)) {\n    skipped.push({ field: key, reason: \"Read-only\" });\n    continue;\n  }\n\n  if (fieldDef.type === \"select\" && !fieldDef.options.includes(value)) {\n    invalid.push({ field: key, reason: `\"${value}\" not in options: ${fieldDef.options.join(\", \")}` });\n    continue;\n  }\n\n  if (fieldDef.type === \"multi_select\") {\n    const badOptions = value.filter(v => !fieldDef.options.includes(v));\n    if (badOptions.length > 0) {\n      invalid.push({ field: key, reason: `Invalid options: ${badOptions.join(\", \")}` });\n      continue;\n    }\n  }\n\n  validFields[key] = value;\n}\n\nreturn [{\n  json: {\n    success: true,\n    confidence: parsed.confidence ?? \"medium\",\n    notes: parsed.notes ?? \"\",\n    task_name: parsed.task_name,\n    valid_fields: validFields,\n    skipped,\n    invalid,\n  }\n}];"
+        "jsCode": "const raw = $input.first().json;\n\nlet parsed;\nif (typeof raw === 'string') {\n  try {\n    const cleaned = raw.replace(/```json|```/g, '').trim();\n    parsed = JSON.parse(cleaned);\n  } catch (e) {\n    return [{ json: { success: false, error: 'JSON parse failed', raw } }];\n  }\n} else {\n  parsed = raw;\n}\n\nif (!parsed.task_name || typeof parsed.task_name !== 'string') {\n  return [{ json: { success: false, error: 'Missing task_name', raw } }];\n}\n\nconst VALID_CONFIDENCE = ['high', 'medium', 'low'];\nconst confidence = VALID_CONFIDENCE.includes(parsed.confidence) ? parsed.confidence : 'medium';\n\nconst READ_ONLY_TYPES = ['formula', 'rollup', 'created_time', 'last_edited_time', 'unique_id'];\nconst schema = $node['Transform Schema'].json.fields;\nconst schemaMap = Object.fromEntries(schema.map(f => [f.name, f]));\n\nconst validFields = {};\nconst skipped = [];\nconst invalid = [];\n\nfor (const [key, value] of Object.entries(parsed.fields ?? {})) {\n  const fieldDef = schemaMap[key];\n\n  if (!fieldDef) {\n    invalid.push({ field: key, reason: 'Not in schema' });\n    continue;\n  }\n\n  if (READ_ONLY_TYPES.includes(fieldDef.type)) {\n    skipped.push({ field: key, reason: 'Read-only' });\n    continue;\n  }\n\n  if (typeof value === 'object' && !Array.isArray(value) && value !== null) {\n    invalid.push({ field: key, reason: 'Value is an object, expected string or array' });\n    continue;\n  }\n\n  if (fieldDef.type === 'select' && fieldDef.options && !fieldDef.options.includes(value)) {\n    invalid.push({ field: key, reason: '\"' + value + '\" not in options: ' + fieldDef.options.join(', ') });\n    continue;\n  }\n\n  if (fieldDef.type === 'status' && fieldDef.options && !fieldDef.options.includes(value)) {\n    invalid.push({ field: key, reason: '\"' + value + '\" not in status options: ' + fieldDef.options.join(', ') });\n    continue;\n  }\n\n  if (fieldDef.type === 'multi_select' && fieldDef.options) {\n    if (!Array.isArray(value)) {\n      invalid.push({ field: key, reason: 'multi_select value must be an array' });\n      continue;\n    }\n    const badOptions = value.filter(v => !fieldDef.options.includes(v));\n    if (badOptions.length > 0) {\n      invalid.push({ field: key, reason: 'Invalid options: ' + badOptions.join(', ') });\n      continue;\n    }\n  }\n\n  validFields[key] = value;\n}\n\nreturn [{\n  json: {\n    success: true,\n    confidence,\n    notes: parsed.notes ?? '',\n    task_name: parsed.task_name,\n    valid_fields: validFields,\n    skipped,\n    invalid,\n  }\n}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        1248,
-        0
-      ],
+      "position": [1248, 0],
       "id": "9143c972-d0e2-467a-904d-a368c724ba69",
       "name": "Parse and Validate"
     },
     {
       "parameters": {
-        "jsCode": "const items = $input.all();\n\n// Item 0 = schema prompt, Item 1 = email\nconst schemaPrompt = items[0].json.schema;\nconst email = items[1].json;\n\n// Parse the schema object back out of the prompt string\nconst schemaJsonMatch = schemaPrompt.match(/\\{[\\s\\S]*\\}/);\nconst schema = JSON.parse(schemaJsonMatch[0]);\n\nconst schemaMap = Object.fromEntries(schema.fields.map(f => [f.name, f]));\nconst READ_ONLY = [\"formula\", \"rollup\", \"created_time\", \"last_edited_time\", \"unique_id\"];\n\nfunction stripEmoji(s) { return (s ?? '').replace(/[\\u{1F300}-\\u{1FAFF}]/gu, '').replace(/^[\\s\\W]+/, '').trim(); }\nfunction extractName(from) { const m = (from ?? '').match(/^\"?([^\"<]+)\"?\\s*</); return m ? m[1].replace(/透過 Notion 的 /, '').trim() : (from ?? ''); }\n\nfunction safeSelect(field, value) {\n  const opts = field.options ?? [];\n  return opts.includes(value) ? value : (opts[0] ?? null);\n}\n\nfunction safeMultiSelect(field, values) {\n  const opts = field.options ?? [];\n  return values.filter(v => opts.includes(v));\n}\n\nfunction inferPriority(field, subject, snippet) {\n  const t = ((subject ?? '') + ' ' + (snippet ?? '')).toLowerCase();\n  const raw = /urgent|asap|critical|life/.test(t) ? 'High'\n             : /fyi|newsletter|unsubscribe/.test(t) ? 'Low'\n             : 'Medium';\n  return safeSelect(field, raw);\n}\n\nfunction inferCategory(field, subject, snippet) {\n  const t = ((subject ?? '') + ' ' + (snippet ?? '')).toLowerCase();\n  const raw =\n    /assignment|homework|submit/.test(t) ? 'assignment' :\n    /exam|quiz|test/.test(t)             ? 'exam' :\n    /event|seminar|workshop/.test(t)     ? 'event' :\n    /deadline|due|reminder/.test(t)      ? 'deadline_reminder' :\n    /club|activity/.test(t)              ? 'club_activity' :\n    /scholarship/.test(t)                ? 'scholarship' :\n    /announce|announcement/.test(t)      ? 'course_announcement' :\n    /admin|registration|form/.test(t)    ? 'administrative' :\n    'other';\n  return safeMultiSelect(field, [raw]);\n}\n\nfunction guessRole(name) {\n  const n = name.toLowerCase();\n  if (/priority/.test(n))                           return 'priority';\n  if (/status/.test(n))                             return 'status';\n  if (/due|deadline/.test(n))                       return 'due_date';\n  if (/start/.test(n))                              return 'start_date';\n  if (/tag|label|categor|topic/.test(n))            return 'tags';\n  if (/short.*desc|summary/.test(n))                return 'description';\n  if (/remark|note|detail/.test(n))                 return 'remarks';\n  if (/request|from|sender|contact|assign/.test(n)) return 'requestor';\n  if (/time|hour|duration|effort/.test(n))          return 'duration';\n  return null;\n}\n\nconst fields = {};\nconst skipped = [];\nconst task_name = stripEmoji(email.Subject);\n\nschema.fields.forEach(f => {\n  if (READ_ONLY.includes(f.type)) { skipped.push(f.name); return; }\n  if (f.type === 'title') return;\n\n  const role = guessRole(f.name);\n  const internalMs = parseInt(email.internalDate ?? Date.now());\n\n  if (f.type === 'status') {\n    fields[f.name] = safeSelect(f, f.options?.[0] ?? null);\n\n  } else if (f.type === 'select' && role === 'priority') {\n    fields[f.name] = inferPriority(f, email.Subject, email.snippet);\n\n  } else if (f.type === 'select') {\n    fields[f.name] = safeSelect(f, f.options?.[0] ?? null);\n\n  } else if (f.type === 'multi_select' && role === 'tags') {\n    fields[f.name] = inferCategory(f, email.Subject, email.snippet);\n\n  } else if (f.type === 'multi_select') {\n    fields[f.name] = [];\n\n  } else if (f.type === 'date' && role === 'due_date') {\n    fields[f.name] = new Date(internalMs + 7 * 864e5).toISOString().split('T')[0];\n\n  } else if (f.type === 'date' && role === 'start_date') {\n    fields[f.name] = new Date(internalMs).toISOString().split('T')[0];\n\n  } else if (f.type === 'date') {\n    fields[f.name] = new Date(internalMs).toISOString().split('T')[0];\n\n  } else if (f.type === 'rich_text' && role === 'description') {\n    fields[f.name] = (email.snippet ?? '').slice(0, 200).trim();\n\n  } else if (f.type === 'rich_text' && role === 'remarks') {\n    fields[f.name] = `Source: ${(email.From ?? '').match(/@([^>]+)/)?.[1] ?? 'unknown'}`;\n\n  } else if (f.type === 'rich_text') {\n    fields[f.name] = '';\n\n  } else if (f.type === 'checkbox') {\n    fields[f.name] = false;\n\n  } else if (f.type === 'number') {\n    fields[f.name] = null;\n  }\n});\n\nconst cleanFields = Object.fromEntries(\n  Object.entries(fields).filter(([_, v]) =>\n    v !== null && v !== '' && !(Array.isArray(v) && v.length === 0)\n  )\n);\n\nreturn [{ json: {\n  task_name,\n  fields: cleanFields,\n  confidence: \"medium\",\n  skipped,\n  notes: `From ${(email.From ?? '').match(/@([^>]+)/)?.[1] ?? 'unknown'}. Validated against schema \"${schema.database_name}\".`\n}}];"
+        "jsCode": "const items = $input.all();\n\nconst schemaPrompt = items[0].json.schema;\nconst email = items[1].json;\n\nconst schemaJsonMatch = schemaPrompt.match(/\\{[\\s\\S]*\\}/);\nconst schema = JSON.parse(schemaJsonMatch[0]);\nconst schemaMap = Object.fromEntries(schema.fields.map(f => [f.name, f]));\nconst READ_ONLY = ['formula', 'rollup', 'created_time', 'last_edited_time', 'unique_id'];\n\nfunction stripEmoji(s) { return (s ?? '').replace(/[\\u{1F300}-\\u{1FAFF}]/gu, '').replace(/^[\\s\\W]+/, '').trim(); }\n\nfunction safeSelect(field, value) {\n  const opts = field.options ?? [];\n  return opts.includes(value) ? value : (opts[0] ?? null);\n}\n\nfunction safeMultiSelect(field, values) {\n  const opts = field.options ?? [];\n  return values.filter(v => opts.includes(v));\n}\n\nfunction inferPriority(field, subject, snippet) {\n  const t = ((subject ?? '') + ' ' + (snippet ?? '')).toLowerCase();\n  const raw = /urgent|asap|critical|life/.test(t) ? 'High'\n             : /fyi|newsletter|unsubscribe/.test(t) ? 'Low'\n             : 'Medium';\n  return safeSelect(field, raw);\n}\n\nfunction inferCategory(field, subject, snippet) {\n  const t = ((subject ?? '') + ' ' + (snippet ?? '')).toLowerCase();\n  const raw =\n    /assignment|homework|submit/.test(t) ? 'assignment' :\n    /exam|quiz|test/.test(t)             ? 'exam' :\n    /event|seminar|workshop/.test(t)     ? 'event' :\n    /deadline|due|reminder/.test(t)      ? 'deadline_reminder' :\n    /club|activity/.test(t)              ? 'club_activity' :\n    /scholarship/.test(t)                ? 'scholarship' :\n    /announce|announcement/.test(t)      ? 'course_announcement' :\n    /admin|registration|form/.test(t)    ? 'administrative' :\n    'other';\n  return safeMultiSelect(field, [raw]);\n}\n\nfunction inferConfidence(email, fields) {\n  if (!email.Subject && !email.snippet) return 'low';\n  const subject = (email.Subject ?? '').toLowerCase();\n  const hasUrgency = /urgent|asap|critical|deadline|due|exam|submit/.test(subject);\n  const hasContent = Object.keys(fields).length >= 3;\n  if (hasUrgency && hasContent) return 'high';\n  if (hasContent) return 'medium';\n  return 'low';\n}\n\nfunction guessRole(name) {\n  const n = name.toLowerCase();\n  if (/priority/.test(n))                           return 'priority';\n  if (/status/.test(n))                             return 'status';\n  if (/due|deadline/.test(n))                       return 'due_date';\n  if (/start/.test(n))                              return 'start_date';\n  if (/tag|label|categor|topic/.test(n))            return 'tags';\n  if (/short.*desc|summary/.test(n))                return 'description';\n  if (/remark|note|detail/.test(n))                 return 'remarks';\n  if (/request|from|sender|contact|assign/.test(n)) return 'requestor';\n  if (/time|hour|duration|effort/.test(n))          return 'duration';\n  return null;\n}\n\nconst fields = {};\nconst skipped = [];\nconst task_name = stripEmoji(email.Subject);\nconst internalMs = parseInt(email.internalDate ?? Date.now());\n\nschema.fields.forEach(f => {\n  if (READ_ONLY.includes(f.type)) { skipped.push(f.name); return; }\n  if (f.type === 'title') return;\n\n  const role = guessRole(f.name);\n  let value = null;\n\n  if (f.type === 'status') {\n    value = safeSelect(f, f.options?.[0] ?? null);\n  } else if (f.type === 'select' && role === 'priority') {\n    value = inferPriority(f, email.Subject, email.snippet);\n  } else if (f.type === 'select') {\n    value = safeSelect(f, f.options?.[0] ?? null);\n  } else if (f.type === 'multi_select' && role === 'tags') {\n    value = inferCategory(f, email.Subject, email.snippet);\n  } else if (f.type === 'multi_select') {\n    value = [];\n  } else if (f.type === 'date' && role === 'due_date') {\n    value = new Date(internalMs + 7 * 864e5).toISOString().split('T')[0];\n  } else if (f.type === 'date' && role === 'start_date') {\n    value = new Date(internalMs).toISOString().split('T')[0];\n  } else if (f.type === 'date') {\n    value = new Date(internalMs).toISOString().split('T')[0];\n  } else if (f.type === 'rich_text' && role === 'description') {\n    value = (email.snippet ?? '').slice(0, 200).trim();\n  } else if (f.type === 'rich_text' && role === 'remarks') {\n    value = 'Source: ' + ((email.From ?? '').match(/@([^>]+)/)?.[1] ?? 'unknown');\n  } else if (f.type === 'rich_text') {\n    value = null;\n  } else if (f.type === 'checkbox') {\n    value = false;\n  } else if (f.type === 'number') {\n    value = null;\n  }\n\n  if (value !== null && value !== '' && !(Array.isArray(value) && value.length === 0)) {\n    fields[f.name] = value;\n  }\n});\n\nconst confidence = inferConfidence(email, fields);\nconst senderDomain = (email.From ?? '').match(/@([^>]+)/)?.[1] ?? 'unknown';\n\nreturn [{ json: {\n  task_name,\n  fields,\n  confidence,\n  skipped,\n  notes: 'Auto-created from email. Sender: ' + senderDomain + '. Validated against schema \"' + schema.database_name + '\".'\n}}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        1024,
-        0
-      ],
+      "position": [1024, 0],
       "id": "145b462b-8c39-4e90-8a08-f03fd15e1c36",
       "name": "Mock LLM"
     },
@@ -108,10 +93,7 @@
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        224,
-        -144
-      ],
+      "position": [224, -144],
       "id": "0af7f14d-1193-4ec8-87fb-ecd13bae8ac9",
       "name": "Transform Schema"
     },
@@ -121,10 +103,7 @@
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        1472,
-        0
-      ],
+      "position": [1472, 0],
       "id": "0ea3972d-56f6-4fa8-b226-14a6193ddc04",
       "name": "Transform to Notion API"
     },
@@ -141,10 +120,7 @@
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
-      "position": [
-        1680,
-        0
-      ],
+      "position": [1680, 0],
       "id": "64cd9454-c0b3-40c2-98c6-db171cca2c06",
       "name": "HTTP Request",
       "credentials": {
@@ -161,10 +137,7 @@
       },
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1.1,
-      "position": [
-        -160,
-        0
-      ],
+      "position": [-160, 0],
       "id": "b1beb1ed-1427-408c-9114-3374a9a0cfdf",
       "name": "Trigger with email"
     },
@@ -172,10 +145,7 @@
       "parameters": {},
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3.2,
-      "position": [
-        704,
-        0
-      ],
+      "position": [704, 0],
       "id": "a87d80f4-c01e-4b5f-8784-e398a911066b",
       "name": "Merge"
     }
