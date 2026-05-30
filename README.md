@@ -72,8 +72,10 @@ docker compose version
 From the repository root:
 
 ```bash
-docker compose up -d
+docker compose up -d --wait
 ```
+
+`n8n` imports the bundled workflow before it becomes ready, so `--wait` is recommended to keep the command running until the service passes its health check.
 
 To stop the services:
 

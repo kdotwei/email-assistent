@@ -5,6 +5,16 @@ services:
     image: docker.n8n.io/n8nio/n8n
     container_name: n8n
     restart: unless-stopped
+    entrypoint:
+      - /bin/sh
+      - -c
+    command:
+      - |
+        if [ ! -f /home/node/.n8n/.workflow-imported ]; then
+          /docker-entrypoint.sh import:workflow --input=/import/Workflow.json
+          touch /home/node/.n8n/.workflow-imported
+        fi
+        exec /docker-entrypoint.sh start
     ports:
       - "5678:5678"
     environment:
@@ -12,8 +22,17 @@ services:
       - TZ=Asia/Taipei
       - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true
       - N8N_RUNNERS_ENABLED=true
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - wget -q -O - http://127.0.0.1:5678/healthz >/dev/null 2>&1 || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
     volumes:
       - n8n_data:/home/node/.n8n
+      - ./n8n/Workflow.json:/import/Workflow.json:ro
     networks:
       - workflow_network
 
