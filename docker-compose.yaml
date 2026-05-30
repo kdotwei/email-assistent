@@ -1,10 +1,10 @@
-version: "3.8"
-
 services:
   n8n:
     image: docker.n8n.io/n8nio/n8n
     container_name: n8n
     restart: unless-stopped
+    env_file:
+      - .env
     entrypoint:
       - /bin/sh
       - -c
@@ -37,7 +37,9 @@ services:
       start_period: 30s
     volumes:
       - n8n_data:/home/node/.n8n
+      - ./scripts:/scripts:ro
       - ./n8n/workflow:/import/workflow:ro
+      - ./n8n/credentials:/import/credentials:ro
     networks:
       - workflow_network
 
