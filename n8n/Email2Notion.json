@@ -5,10 +5,7 @@
       "parameters": {},
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
-      "position": [
-        -240,
-        0
-      ],
+      "position": [-240, 0],
       "id": "5329ddcd-5a43-4478-a0cb-2f640782e413",
       "name": "When clicking ‘Execute workflow’"
     },
@@ -22,10 +19,7 @@
       },
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.2,
-      "position": [
-        512,
-        0
-      ],
+      "position": [512, 0],
       "id": "edf85c61-fd5c-45a4-b427-849f86e207ce",
       "name": "Get many messages",
       "webhookId": "353765f6-e992-48d6-bcef-507fac51337f",
@@ -58,10 +52,7 @@
       },
       "type": "n8n-nodes-base.notion",
       "typeVersion": 2.2,
-      "position": [
-        928,
-        432
-      ],
+      "position": [928, 432],
       "id": "dcff4de1-29be-4958-a074-004b2ab40fe9",
       "name": "Create a database page",
       "credentials": {
@@ -77,10 +68,7 @@
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        304,
-        208
-      ],
+      "position": [304, 208],
       "id": "3d52fbe7-9f61-4247-a8e5-0263affd447e",
       "name": "Prepare Notion schema context"
     },
@@ -98,10 +86,7 @@
       },
       "type": "n8n-nodes-base.notion",
       "typeVersion": 2.2,
-      "position": [
-        -64,
-        208
-      ],
+      "position": [-64, 208],
       "id": "cbb87c19-d15c-429e-a5b0-7db93bffce93",
       "name": "Get a database",
       "credentials": {
@@ -117,10 +102,7 @@
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        880,
-        0
-      ],
+      "position": [880, 0],
       "id": "9143c972-d0e2-467a-904d-a368c724ba69",
       "name": "Parse and Validate"
     },
@@ -130,10 +112,7 @@
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        688,
-        0
-      ],
+      "position": [688, 0],
       "id": "145b462b-8c39-4e90-8a08-f03fd15e1c36",
       "name": "Mock LLM"
     },
@@ -143,10 +122,7 @@
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        128,
-        208
-      ],
+      "position": [128, 208],
       "id": "0af7f14d-1193-4ec8-87fb-ecd13bae8ac9",
       "name": "Transform Schema"
     },
@@ -156,10 +132,7 @@
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        1104,
-        0
-      ],
+      "position": [1104, 0],
       "id": "0ea3972d-56f6-4fa8-b226-14a6193ddc04",
       "name": "Transform to Notion API"
     },
@@ -176,10 +149,7 @@
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
-      "position": [
-        1312,
-        0
-      ],
+      "position": [1312, 0],
       "id": "64cd9454-c0b3-40c2-98c6-db171cca2c06",
       "name": "HTTP Request",
       "credentials": {
