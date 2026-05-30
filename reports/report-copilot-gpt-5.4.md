@@ -287,3 +287,30 @@
 
 ### Next Steps
 - Commit the current Compose, n8n startup, credentials template, and documentation changes on `feat/n8n-runtime-bootstrap` when the contents are finalized.
+
+## [2026-05-30 23:48] Task Record
+
+### Task Description
+- Create a git branch whose name reflects the current staged n8n startup readiness changes.
+
+### Actions Taken
+- Modified file: `reports/report-copilot-gpt-5.4.md`
+- Terminal commands executed:
+  - `git status --short`
+  - `git diff --cached -- README.md scripts/n8n-entrypoint.sh`
+  - `git branch --show-current && git branch --list`
+  - `git branch --list 'fix/n8n-startup-readiness' && git switch -c fix/n8n-startup-readiness`
+  - `git status --short --branch`
+  - `date '+%Y-%m-%d %H:%M'`
+- Created and switched to branch: `fix/n8n-startup-readiness`
+
+### Attempted Methods
+- Checked the exact staged diff first so the branch name would reflect the behavior change rather than only the touched filenames.
+- Confirmed the main functional change is in `scripts/n8n-entrypoint.sh`, where startup readiness now follows the editor-accessible log signal instead of relying only on the health check.
+- Matched the branch name to that behavior and created it from the current working tree so all staged changes moved off `main` intact.
+
+### Issues & Blockers
+- No blocker during branch creation.
+
+### Next Steps
+- Commit the current README and `scripts/n8n-entrypoint.sh` changes on `fix/n8n-startup-readiness` once the diff is finalized.

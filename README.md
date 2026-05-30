@@ -93,7 +93,7 @@ docker compose up -d --wait
 
 Before starting n8n, edit `.env` and set `N8N_ENCRYPTION_KEY` to a stable random value. If `N8N_ENCRYPTION_KEY` is empty, the startup script will exit immediately and the container will restart in a loop. Production environments must set this value explicitly. Do not rotate it casually: if it changes, n8n may no longer be able to decrypt existing credentials in the `n8n_data` volume.
 
-`n8n` imports bundled workflows and supported credentials before it starts the server. The startup script then waits until n8n answers `/healthz` and prints `n8n started; editor is ready at http://localhost:5678`. `--wait` is still recommended so Docker Compose waits for the service health check too.
+`n8n` imports bundled workflows and supported credentials before it starts the server. The startup script then watches the n8n startup log and prints `n8n started; editor is ready at http://localhost:5678` only after n8n reports that the editor is accessible. `--wait` is still recommended so Docker Compose waits for the service health check too.
 
 The root `.env` file is injected into the `n8n` container, so workflow expressions can read values such as `{{$env.NOTION_TOKEN}}`, `{{$env.GOOGLE_CLIENT_ID}}`, and `{{$env.GOOGLE_CLIENT_SECRET}}`.
 
