@@ -114,6 +114,13 @@ After startup, the services should be available at:
 - n8n: `http://localhost:5678`
 - Langflow: `http://localhost:7860`
 
+The default n8n owner account is:
+
+- **Email:** `admin@example.com`
+- **Password:** `password`
+
+Change these credentials after your first login.
+
 ### Option 2: Start only n8n with the helper script
 
 ```bash

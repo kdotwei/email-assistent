@@ -16,7 +16,13 @@
       "typeVersion": 1.4,
       "position": [-544, -128],
       "id": "a83c2633-8aa7-4138-bc1a-d63b57a8c5ee",
-      "name": "Gmail Trigger"
+      "name": "Gmail Trigger",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "voGJO1PXh1NnbPA2",
+          "name": "Gmail account"
+        }
+      }
     },
     {
       "parameters": {
@@ -197,9 +203,10 @@
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "ea603ff9-2510-4049-bcd6-adcc961588fa",
+  "versionId": "8f42e419-aac3-4de4-b400-baf0d42fbf45",
   "meta": {
-    "instanceId": "affbab9d455e9c480b44177bccfa1297b1480f1815abac4922a9dbf041244ce6"
+    "instanceId": "fa666fc8686a7b34e6cfbfc6d4dc377c9a913996d04fcb2c7891509c084d2ced",
+    "templateCredsSetupCompleted": true
   },
   "id": "UFxsKv3iMD7irR3v",
   "tags": []
