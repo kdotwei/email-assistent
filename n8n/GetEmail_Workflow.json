@@ -1,0 +1,62 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [-448, -32],
+      "id": "948106b8-1dc6-4b52-b657-610a27a02971",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "filters": {
+          "receivedAfter": "2026-05-24T00:00:00"
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [-272, -32],
+      "id": "dbd9c9de-2608-4f0c-91eb-5dede7b6adfe",
+      "name": "Get many messages",
+      "webhookId": "353765f6-e992-48d6-bcef-507fac51337f",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "voGJO1PXh1NnbPA2",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Get many messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get many messages": {
+      "main": [[]]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "9c24fa0e-ed76-4f25-bf25-941d5b046459",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "affbab9d455e9c480b44177bccfa1297b1480f1815abac4922a9dbf041244ce6"
+  },
+  "id": "jX123WxkhqxGCigu",
+  "tags": []
+}
