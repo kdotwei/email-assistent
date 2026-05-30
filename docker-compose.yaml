@@ -6,15 +6,7 @@ services:
     env_file:
       - .env
     entrypoint:
-      - /bin/sh
-      - -c
-    command:
-      - |
-        if [ ! -f /home/node/.n8n/.workflow-imported ]; then
-          /docker-entrypoint.sh import:workflow --separate --input=/import/workflow && \
-          touch /home/node/.n8n/.workflow-imported
-        fi
-        exec /docker-entrypoint.sh start
+      - /scripts/n8n-entrypoint.sh
     ports:
       - "5678:5678"
     environment:
@@ -38,7 +30,7 @@ services:
     volumes:
       - n8n_data:/home/node/.n8n
       - ./scripts:/scripts:ro
-      - ./n8n/workflow:/import/workflow:ro
+      - ./n8n/workflow:/import/workflows:ro
       - ./n8n/credentials:/import/credentials:ro
     networks:
       - workflow_network
