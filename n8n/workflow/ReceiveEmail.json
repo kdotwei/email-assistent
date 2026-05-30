@@ -35,9 +35,143 @@
         },
         "workflowInputs": {
           "mappingMode": "defineBelow",
-          "value": {},
+          "value": {
+            "sizeEstimate": "={{ $json.sizeEstimate }}",
+            "id": "={{ $json.id }}",
+            "threadId": "={{ $json.threadId }}",
+            "snippet": "={{ $json.snippet }}",
+            "payload": "={{ $json.payload }}",
+            "historyId": "={{ $json.historyId }}",
+            "internalDate": "={{ $json.internalDate }}",
+            "labels": "={{ $json.labels }}",
+            "From": "={{ $json.From }}",
+            "To": "={{ $json.To }}",
+            "Cc": "={{ $json.Cc }}",
+            "Subject": "={{ $json.Subject }}"
+          },
           "matchingColumns": [],
-          "schema": [],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "threadId",
+              "displayName": "threadId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "snippet",
+              "displayName": "snippet",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "payload",
+              "displayName": "payload",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "object",
+              "removed": false
+            },
+            {
+              "id": "sizeEstimate",
+              "displayName": "sizeEstimate",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number",
+              "removed": false
+            },
+            {
+              "id": "historyId",
+              "displayName": "historyId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "internalDate",
+              "displayName": "internalDate",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "labels",
+              "displayName": "labels",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "array",
+              "removed": false
+            },
+            {
+              "id": "From",
+              "displayName": "From",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "To",
+              "displayName": "To",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "Cc",
+              "displayName": "Cc",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "Subject",
+              "displayName": "Subject",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
           "attemptToConvertTypes": false,
           "convertFieldsToString": true
         },
@@ -70,7 +204,7 @@
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "9fc88bba-8f3d-467f-a81e-d588b84881de",
+  "versionId": "3de9e79a-6a87-4b89-96e8-beef96776248",
   "meta": {
     "instanceId": "fa666fc8686a7b34e6cfbfc6d4dc377c9a913996d04fcb2c7891509c084d2ced",
     "templateCredsSetupCompleted": true
