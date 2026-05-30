@@ -1,0 +1,266 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [-240, 0],
+      "id": "5329ddcd-5a43-4478-a0cb-2f640782e413",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "limit": 1,
+        "filters": {
+          "receivedAfter": "2026-05-24T00:00:00"
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [512, 0],
+      "id": "edf85c61-fd5c-45a4-b427-849f86e207ce",
+      "name": "Get many messages",
+      "webhookId": "353765f6-e992-48d6-bcef-507fac51337f",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "voGJO1PXh1NnbPA2",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "databaseId": {
+          "__rl": true,
+          "value": "e1380ece-1a36-8201-a7d8-81b17b98a4bb",
+          "mode": "list",
+          "cachedResultName": "Todos DB",
+          "cachedResultUrl": "https://www.notion.so/e1380ece1a368201a7d881b17b98a4bb"
+        },
+        "title": "={{ $json.properties['Task Name'].title[0].text.content }}",
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "={{ $json.properties.Status }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [928, 432],
+      "id": "dcff4de1-29be-4958-a074-004b2ab40fe9",
+      "name": "Create a database page",
+      "credentials": {
+        "notionApi": {
+          "id": "s0BKxQfYkjiVDXrC",
+          "name": "Notion account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const schema = $input.first().json;\n\nconst prompt = `You are helping categorize and create tasks in a Notion database.\nHere is the database structure you must follow:\n\n${JSON.stringify(schema, null, 2)}\n\nRules:\n- \"title\" is the task name and is always required\n- \"formula\", \"rollup\", \"created_time\", \"last_edited_time\" fields are read-only — never set them\n- For \"select\" and \"multi_select\" fields, only use the provided options values exactly\n- For \"date\" fields, use ISO 8601 format (YYYY-MM-DD)\n`;\n\nreturn [{ json: { schema_prompt: prompt } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [208, 208],
+      "id": "3d52fbe7-9f61-4247-a8e5-0263affd447e",
+      "name": "Stringify Notion database schema"
+    },
+    {
+      "parameters": {
+        "resource": "database",
+        "databaseId": {
+          "__rl": true,
+          "value": "e1380ece-1a36-8201-a7d8-81b17b98a4bb",
+          "mode": "list",
+          "cachedResultName": "Todos DB",
+          "cachedResultUrl": "https://www.notion.so/e1380ece1a368201a7d881b17b98a4bb"
+        },
+        "simple": false
+      },
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [-64, 208],
+      "id": "cbb87c19-d15c-429e-a5b0-7db93bffce93",
+      "name": "Get a database",
+      "credentials": {
+        "notionApi": {
+          "id": "s0BKxQfYkjiVDXrC",
+          "name": "Notion account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// The mock LLM node already outputs a JS object, not a JSON string\n// So we skip parsing entirely and use it directly\nconst raw = $input.first().json;\n\n// If it came from a real LLM node it would be a string — handle both cases\nlet parsed;\nif (typeof raw === \"string\") {\n  try {\n    const cleaned = raw.replace(/```json|```/g, \"\").trim();\n    parsed = JSON.parse(cleaned);\n  } catch (e) {\n    return [{ json: { success: false, error: \"JSON parse failed\", raw } }];\n  }\n} else {\n  // Already an object (mock node or well-behaved LLM node)\n  parsed = raw;\n}\n\n// Validate required fields\nif (!parsed.task_name || typeof parsed.task_name !== \"string\") {\n  return [{ json: { success: false, error: \"Missing task_name\", raw } }];\n}\n\nconst READ_ONLY_TYPES = [\"formula\", \"rollup\", \"created_time\", \"last_edited_time\"];\nconst schema = $node[\"Transform Schema\"].json.fields;\nconst schemaMap = Object.fromEntries(schema.map(f => [f.name, f]));\n\nconst validFields = {};\nconst skipped = [];\nconst invalid = [];\n\nfor (const [key, value] of Object.entries(parsed.fields ?? {})) {\n  const fieldDef = schemaMap[key];\n\n  if (!fieldDef) {\n    invalid.push({ field: key, reason: \"Not in schema\" });\n    continue;\n  }\n\n  if (READ_ONLY_TYPES.includes(fieldDef.type)) {\n    skipped.push({ field: key, reason: \"Read-only\" });\n    continue;\n  }\n\n  if (fieldDef.type === \"select\" && !fieldDef.options.includes(value)) {\n    invalid.push({ field: key, reason: `\"${value}\" not in options: ${fieldDef.options.join(\", \")}` });\n    continue;\n  }\n\n  if (fieldDef.type === \"multi_select\") {\n    const badOptions = value.filter(v => !fieldDef.options.includes(v));\n    if (badOptions.length > 0) {\n      invalid.push({ field: key, reason: `Invalid options: ${badOptions.join(\", \")}` });\n      continue;\n    }\n  }\n\n  validFields[key] = value;\n}\n\nreturn [{\n  json: {\n    success: true,\n    confidence: parsed.confidence ?? \"medium\",\n    notes: parsed.notes ?? \"\",\n    task_name: parsed.task_name,\n    valid_fields: validFields,\n    skipped,\n    invalid,\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [880, 0],
+      "id": "9143c972-d0e2-467a-904d-a368c724ba69",
+      "name": "Parse and Validate"
+    },
+    {
+      "parameters": {
+        "jsCode": "const schema = $node[\"Transform Schema\"].json;\nconst email  = $input.first().json;\n\nconst schemaMap = Object.fromEntries(schema.fields.map(f => [f.name, f]));\nconst READ_ONLY = [\"formula\", \"rollup\", \"created_time\", \"last_edited_time\"];\n\nfunction stripEmoji(s) { return s.replace(/[\\u{1F300}-\\u{1FAFF}]/gu, '').replace(/^[\\s\\W]+/, '').trim(); }\nfunction extractName(from) { const m = from.match(/^\"?([^\"<]+)\"?\\s*</); return m ? m[1].replace(/透過 Notion 的 /, '').trim() : from; }\n\nfunction safeSelect(field, value) {\n  const opts = field.options ?? [];\n  return opts.includes(value) ? value : (opts[0] ?? null);\n}\n\nfunction safeMultiSelect(field, values) {\n  const opts = field.options ?? [];\n  return values.filter(v => opts.includes(v));\n}\n\nfunction inferPriority(field, subject, snippet) {\n  const t = (subject + ' ' + snippet).toLowerCase();\n  const raw = /urgent|asap|critical/.test(t) ? 'High'\n             : /fyi|newsletter|unsubscribe/.test(t) ? 'Low'\n             : 'Medium';\n  return safeSelect(field, raw);\n}\n\nfunction inferTags(field, labels, subject) {\n  const raw = [\n    ...labels.map(l => l.name.replace('CATEGORY_', '').toLowerCase()),\n    /notion/.test(subject.toLowerCase()) ? 'notion' : null,\n    /collab|協作/.test(subject) ? 'collaboration' : null,\n    /update/.test(subject.toLowerCase()) ? 'updates' : null,\n  ].filter(Boolean);\n  return safeMultiSelect(field, [...new Set(raw)]);\n}\n\n// Heuristic: guess which field serves which semantic role by name keywords\nfunction guessRole(name) {\n  const n = name.toLowerCase();\n  if (/priority/.test(n))                           return 'priority';\n  if (/status/.test(n))                             return 'status';\n  if (/due|date|deadline|schedule/.test(n))         return 'date';\n  if (/tag|label|categor|topic/.test(n))            return 'tags';\n  if (/desc|note|summary|detail|body/.test(n))      return 'description';\n  if (/request|from|sender|contact|assign/.test(n)) return 'requestor';\n  return null;\n}\n\nconst fields = {};\nconst skipped = [];\nlet task_name = stripEmoji(email.Subject); // title always comes from subject\n\nschema.fields.forEach(f => {\n  if (READ_ONLY.includes(f.type)) { skipped.push(f.name); return; }\n  if (f.type === 'title') return; // handled separately above\n\n  const role = guessRole(f.name);\n\n  if (f.type === 'status') {\n    fields[f.name] = safeSelect(f, 'Not Started');\n  } else if (f.type === 'select' && role === 'priority') {\n    fields[f.name] = inferPriority(f, email.Subject, email.snippet);\n  } else if (f.type === 'select') {\n    fields[f.name] = safeSelect(f, f.options?.[0] ?? null);\n  } else if (f.type === 'multi_select' && role === 'tags') {\n    fields[f.name] = inferTags(f, email.labels ?? [], email.Subject);\n  } else if (f.type === 'multi_select') {\n    fields[f.name] = [];\n  } else if (f.type === 'date') {\n    fields[f.name] = new Date(parseInt(email.internalDate) + 7 * 864e5).toISOString().split('T')[0];\n  } else if (f.type === 'rich_text' && role === 'description') {\n    fields[f.name] = (email.snippet ?? '').slice(0, 200).trim();\n  } else if (f.type === 'rich_text' && role === 'requestor') {\n    fields[f.name] = extractName(email.From ?? '');\n  } else if (f.type === 'rich_text') {\n    // unknown rich_text field — leave empty, LLM would fill this in real flow\n    fields[f.name] = '';\n  } else if (f.type === 'checkbox') {\n    fields[f.name] = false;\n  } else if (f.type === 'number') {\n    fields[f.name] = null;\n  }\n  // url, email, phone, people, relation — skip, no email data to map\n});\n\n// Drop null/empty values to keep the payload clean\nconst cleanFields = Object.fromEntries(\n  Object.entries(fields).filter(([_, v]) =>\n    v !== null && v !== '' && !(Array.isArray(v) && v.length === 0)\n  )\n);\n\nreturn [{ json: {\n  task_name,\n  fields: cleanFields,\n  confidence: \"medium\",\n  skipped,\n  notes: `From ${(email.From ?? '').match(/@([^>]+)/)?.[1] ?? 'unknown'}. Validated against schema \"${schema.database_name}\".`\n}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [688, 0],
+      "id": "145b462b-8c39-4e90-8a08-f03fd15e1c36",
+      "name": "Mock LLM"
+    },
+    {
+      "parameters": {
+        "jsCode": "const properties = $input.first().json.properties;\n\nconst typeHandlers = {\n  title:            (name, _p) => ({ name, type: \"title\",        required: true }),\n  rich_text:        (name, _p) => ({ name, type: \"rich_text\" }),  // keep original, not \"text\"\n  number:           (name, _p) => ({ name, type: \"number\" }),\n  select:           (name,  p) => ({ name, type: \"select\",       options: p.select?.options?.map(o => o.name) ?? [] }),\n  multi_select:     (name,  p) => ({ name, type: \"multi_select\", options: p.multi_select?.options?.map(o => o.name) ?? [] }),\n  date:             (name, _p) => ({ name, type: \"date\" }),\n  checkbox:         (name, _p) => ({ name, type: \"checkbox\" }),\n  url:              (name, _p) => ({ name, type: \"url\" }),\n  email:            (name, _p) => ({ name, type: \"email\" }),\n  phone_number:     (name, _p) => ({ name, type: \"phone_number\" }),\n  people:           (name, _p) => ({ name, type: \"people\" }),\n  relation:         (name, _p) => ({ name, type: \"relation\" }),\n  rollup:           (name, _p) => ({ name, type: \"rollup\",        note: \"Auto-calculated from relation\" }),\n  formula:          (name, _p) => ({ name, type: \"formula\",       note: \"Auto-calculated, read-only\" }),\n  status:           (name,  p) => ({ name, type: \"status\",       options: p.status?.options?.map(o => o.name) ?? [] }),\n  created_time:     (name, _p) => ({ name, type: \"created_time\",       note: \"Auto-set, read-only\" }),\n  last_edited_time: (name, _p) => ({ name, type: \"last_edited_time\",   note: \"Auto-set, read-only\" }),\n};\n\nconst fields = Object.entries(properties).map(([name, prop]) => {\n  const handler = typeHandlers[prop.type];\n  return handler ? handler(name, prop) : { name, type: prop.type };\n});\n\nfields.sort((a, b) => {\n  if (a.type === \"title\") return -1;\n  if (b.type === \"title\") return 1;\n  return a.name.localeCompare(b.name);\n});\n\n// Expose database_name from actual Notion data\nconst dbTitle = $input.first().json.title?.[0]?.plain_text ?? \"Unknown\";\nreturn [{ json: { database_name: dbTitle, fields } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [80, 208],
+      "id": "0af7f14d-1193-4ec8-87fb-ecd13bae8ac9",
+      "name": "Transform Schema"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst schema = $node[\"Transform Schema\"].json;\nconst DATABASE_ID = $('Get a database').first().json.id;\n\n// Build type map from live schema — no hardcoding\nconst schemaMap = Object.fromEntries(schema.fields.map(f => [f.name, f.type]));\n\nconst properties = {};\n\n// Title field — find it dynamically from schema\nconst titleField = schema.fields.find(f => f.type === 'title');\nif (titleField) {\n  properties[titleField.name] = {\n    title: [{ text: { content: input.task_name ?? '' } }]\n  };\n}\n\nfor (const [key, value] of Object.entries(input.valid_fields ?? {})) {\n  const type = schemaMap[key];\n  if (!type || value === null || value === undefined) continue;\n  if (typeof value === 'object' && !Array.isArray(value)) continue; // skip malformed\n\n  if (type === \"select\")       properties[key] = { select: { name: value } };\n  if (type === \"status\")       properties[key] = { status: { name: value } };\n  if (type === \"multi_select\") properties[key] = { multi_select: (Array.isArray(value) ? value : [value]).map(v => ({ name: v })) };\n  if (type === \"date\")         properties[key] = { date: { start: value } };\n  if (type === \"rich_text\")    properties[key] = { rich_text: [{ text: { content: String(value) } }] };\n  if (type === \"checkbox\")     properties[key] = { checkbox: Boolean(value) };\n  if (type === \"number\")       properties[key] = { number: Number(value) };\n  if (type === \"url\")          properties[key] = { url: String(value) };\n  if (type === \"email\")        properties[key] = { email: String(value) };\n  if (type === \"phone_number\") properties[key] = { phone_number: String(value) };\n}\n\nreturn [{ json: { parent: { database_id: DATABASE_ID }, properties } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1104, 0],
+      "id": "0ea3972d-56f6-4fa8-b226-14a6193ddc04",
+      "name": "Transform to Notion API"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.notion.com/v1/pages",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "notionApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [1312, 0],
+      "id": "64cd9454-c0b3-40c2-98c6-db171cca2c06",
+      "name": "HTTP Request",
+      "credentials": {
+        "notionApi": {
+          "id": "s0BKxQfYkjiVDXrC",
+          "name": "Notion account 2"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Get a database",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get a database": {
+      "main": [
+        [
+          {
+            "node": "Transform Schema",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get many messages": {
+      "main": [
+        [
+          {
+            "node": "Mock LLM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mock LLM": {
+      "main": [
+        [
+          {
+            "node": "Parse and Validate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stringify Notion database schema": {
+      "main": [
+        [
+          {
+            "node": "Get many messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transform Schema": {
+      "main": [
+        [
+          {
+            "node": "Stringify Notion database schema",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse and Validate": {
+      "main": [
+        [
+          {
+            "node": "Transform to Notion API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transform to Notion API": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "7d8c24cf-cfaa-4784-9ca9-66a97ad61abd",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "affbab9d455e9c480b44177bccfa1297b1480f1815abac4922a9dbf041244ce6"
+  },
+  "id": "gftQRLvLgY1jAZb1",
+  "tags": []
+}
