@@ -1,7 +1,7 @@
 #!/bin/bash
 docker volume create n8n_data
 
-docker run -it --rm \
+docker run -it --rm -d \
     --name n8n \
     -p 5678:5678 \
     -e GENERIC_TIMEZONE="Asia/Taipei" \
