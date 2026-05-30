@@ -14,18 +14,9 @@
       },
       "type": "n8n-nodes-base.gmailTrigger",
       "typeVersion": 1.4,
-      "position": [
-        -544,
-        -128
-      ],
+      "position": [-544, -128],
       "id": "a83c2633-8aa7-4138-bc1a-d63b57a8c5ee",
-      "name": "Gmail Trigger",
-      "credentials": {
-        "gmailOAuth2": {
-          "id": "voGJO1PXh1NnbPA2",
-          "name": "Gmail account"
-        }
-      }
+      "name": "Gmail Trigger"
     },
     {
       "parameters": {
@@ -182,10 +173,7 @@
       },
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
-      "position": [
-        -224,
-        -128
-      ],
+      "position": [-224, -128],
       "id": "5da4058e-64fc-464a-9527-9038bb19594e",
       "name": "Call 'Email2Notion'"
     }

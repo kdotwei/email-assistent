@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   n8n:
@@ -11,7 +11,7 @@ services:
     command:
       - |
         if [ ! -f /home/node/.n8n/.workflow-imported ]; then
-          /docker-entrypoint.sh import:workflow --input=/import/Workflow.json
+          /docker-entrypoint.sh import:workflow --separate --input=/import/workflow && \
           touch /home/node/.n8n/.workflow-imported
         fi
         exec /docker-entrypoint.sh start
@@ -22,6 +22,11 @@ services:
       - TZ=Asia/Taipei
       - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true
       - N8N_RUNNERS_ENABLED=true
+      - N8N_INSTANCE_OWNER_MANAGED_BY_ENV=true
+      - N8N_INSTANCE_OWNER_EMAIL="admin@example.com"
+      - N8N_INSTANCE_OWNER_FIRSTNAME="Admin"
+      - N8N_INSTANCE_OWNER_LASTNAME="User"
+      - N8N_INSTANCE_OWNER_PASSWORD_HASH=$$2y$$10$$d/LjIP9EvN1NZxmTfPYhMOVNxqa.zIedvap7sSdFbNRlAK94/eppa
     healthcheck:
       test:
         - CMD-SHELL
@@ -32,7 +37,7 @@ services:
       start_period: 30s
     volumes:
       - n8n_data:/home/node/.n8n
-      - ./n8n/Workflow.json:/import/Workflow.json:ro
+      - ./n8n/workflow:/import/workflow:ro
     networks:
       - workflow_network
 
