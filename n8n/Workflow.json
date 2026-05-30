@@ -5,7 +5,10 @@
       "parameters": {},
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
-      "position": [-240, 0],
+      "position": [
+        -240,
+        0
+      ],
       "id": "5329ddcd-5a43-4478-a0cb-2f640782e413",
       "name": "When clicking ‘Execute workflow’"
     },
@@ -19,13 +22,16 @@
       },
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.2,
-      "position": [512, 0],
+      "position": [
+        512,
+        0
+      ],
       "id": "edf85c61-fd5c-45a4-b427-849f86e207ce",
       "name": "Get many messages",
       "webhookId": "353765f6-e992-48d6-bcef-507fac51337f",
       "credentials": {
         "gmailOAuth2": {
-          "id": "voGJO1PXh1NnbPA2",
+          "id": "alzPOF3YipI0N8ZF",
           "name": "Gmail account"
         }
       }
@@ -52,25 +58,31 @@
       },
       "type": "n8n-nodes-base.notion",
       "typeVersion": 2.2,
-      "position": [928, 432],
+      "position": [
+        928,
+        432
+      ],
       "id": "dcff4de1-29be-4958-a074-004b2ab40fe9",
       "name": "Create a database page",
       "credentials": {
         "notionApi": {
-          "id": "s0BKxQfYkjiVDXrC",
-          "name": "Notion account 2"
+          "id": "cHwhc8T5vN8dnUBd",
+          "name": "Notion account"
         }
       }
     },
     {
       "parameters": {
-        "jsCode": "const schema = $input.first().json;\n\nconst prompt = `You are helping categorize and create tasks in a Notion database.\nHere is the database structure you must follow:\n\n${JSON.stringify(schema, null, 2)}\n\nRules:\n- \"title\" is the task name and is always required\n- \"formula\", \"rollup\", \"created_time\", \"last_edited_time\" fields are read-only — never set them\n- For \"select\" and \"multi_select\" fields, only use the provided options values exactly\n- For \"date\" fields, use ISO 8601 format (YYYY-MM-DD)\n`;\n\nreturn [{ json: { schema_prompt: prompt } }];"
+        "jsCode": "const schema = $input.first().json;\n\nreturn [\n  {\n    json: {\n      schema: schema,\n      rules: {\n        title: \"task name and always required\",\n        readonly_fields: [\n          \"formula\",\n          \"rollup\",\n          \"created_time\",\n          \"last_edited_time\"\n        ],\n        select_rule: \"For select and multi_select fields, only use the provided option values exactly\",\n        date_format: \"ISO 8601 format (YYYY-MM-DD)\"\n      }\n    }\n  }\n];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [208, 208],
+      "position": [
+        304,
+        208
+      ],
       "id": "3d52fbe7-9f61-4247-a8e5-0263affd447e",
-      "name": "Stringify Notion database schema"
+      "name": "Prepare Notion schema context"
     },
     {
       "parameters": {
@@ -86,13 +98,16 @@
       },
       "type": "n8n-nodes-base.notion",
       "typeVersion": 2.2,
-      "position": [-64, 208],
+      "position": [
+        -64,
+        208
+      ],
       "id": "cbb87c19-d15c-429e-a5b0-7db93bffce93",
       "name": "Get a database",
       "credentials": {
         "notionApi": {
-          "id": "s0BKxQfYkjiVDXrC",
-          "name": "Notion account 2"
+          "id": "cHwhc8T5vN8dnUBd",
+          "name": "Notion account"
         }
       }
     },
@@ -102,7 +117,10 @@
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [880, 0],
+      "position": [
+        880,
+        0
+      ],
       "id": "9143c972-d0e2-467a-904d-a368c724ba69",
       "name": "Parse and Validate"
     },
@@ -112,7 +130,10 @@
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [688, 0],
+      "position": [
+        688,
+        0
+      ],
       "id": "145b462b-8c39-4e90-8a08-f03fd15e1c36",
       "name": "Mock LLM"
     },
@@ -122,7 +143,10 @@
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [80, 208],
+      "position": [
+        128,
+        208
+      ],
       "id": "0af7f14d-1193-4ec8-87fb-ecd13bae8ac9",
       "name": "Transform Schema"
     },
@@ -132,7 +156,10 @@
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1104, 0],
+      "position": [
+        1104,
+        0
+      ],
       "id": "0ea3972d-56f6-4fa8-b226-14a6193ddc04",
       "name": "Transform to Notion API"
     },
@@ -149,13 +176,16 @@
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
-      "position": [1312, 0],
+      "position": [
+        1312,
+        0
+      ],
       "id": "64cd9454-c0b3-40c2-98c6-db171cca2c06",
       "name": "HTTP Request",
       "credentials": {
         "notionApi": {
-          "id": "s0BKxQfYkjiVDXrC",
-          "name": "Notion account 2"
+          "id": "cHwhc8T5vN8dnUBd",
+          "name": "Notion account"
         }
       }
     }
@@ -206,7 +236,7 @@
         ]
       ]
     },
-    "Stringify Notion database schema": {
+    "Prepare Notion schema context": {
       "main": [
         [
           {
@@ -221,7 +251,7 @@
       "main": [
         [
           {
-            "node": "Stringify Notion database schema",
+            "node": "Prepare Notion schema context",
             "type": "main",
             "index": 0
           }
@@ -256,10 +286,10 @@
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "7d8c24cf-cfaa-4784-9ca9-66a97ad61abd",
+  "versionId": "ece5f615-9542-447b-8cc7-e12891dfbfc1",
   "meta": {
     "templateCredsSetupCompleted": true,
-    "instanceId": "affbab9d455e9c480b44177bccfa1297b1480f1815abac4922a9dbf041244ce6"
+    "instanceId": "3eca16a5225bc911408c5e2b23d9c345dda3e96fc76b9adea690bed4f3f284ac"
   },
   "id": "gftQRLvLgY1jAZb1",
   "tags": []
