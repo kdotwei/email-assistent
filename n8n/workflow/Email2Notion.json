@@ -2,73 +2,12 @@
   "name": "Email2Notion",
   "nodes": [
     {
-      "parameters": {},
-      "type": "n8n-nodes-base.manualTrigger",
-      "typeVersion": 1,
-      "position": [-240, 0],
-      "id": "5329ddcd-5a43-4478-a0cb-2f640782e413",
-      "name": "When clicking ‘Execute workflow’"
-    },
-    {
-      "parameters": {
-        "operation": "getAll",
-        "limit": 1,
-        "filters": {
-          "receivedAfter": "2026-05-24T00:00:00"
-        }
-      },
-      "type": "n8n-nodes-base.gmail",
-      "typeVersion": 2.2,
-      "position": [512, 0],
-      "id": "edf85c61-fd5c-45a4-b427-849f86e207ce",
-      "name": "Get many messages",
-      "webhookId": "353765f6-e992-48d6-bcef-507fac51337f",
-      "credentials": {
-        "gmailOAuth2": {
-          "id": "voGJO1PXh1NnbPA2",
-          "name": "Gmail account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "resource": "databasePage",
-        "databaseId": {
-          "__rl": true,
-          "value": "e1380ece-1a36-8201-a7d8-81b17b98a4bb",
-          "mode": "list",
-          "cachedResultName": "Todos DB",
-          "cachedResultUrl": "https://www.notion.so/e1380ece1a368201a7d881b17b98a4bb"
-        },
-        "title": "={{ $json.properties['Task Name'].title[0].text.content }}",
-        "propertiesUi": {
-          "propertyValues": [
-            {
-              "key": "={{ $json.properties.Status }}"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.notion",
-      "typeVersion": 2.2,
-      "position": [928, 432],
-      "id": "dcff4de1-29be-4958-a074-004b2ab40fe9",
-      "name": "Create a database page",
-      "credentials": {
-        "notionApi": {
-          "id": "cHwhc8T5vN8dnUBd",
-          "name": "Notion account"
-        }
-      }
-    },
-    {
       "parameters": {
         "jsCode": "const schema = $input.first().json;\n\nreturn [\n  {\n    json: {\n      schema: schema,\n      rules: {\n        title: \"task name and always required\",\n        readonly_fields: [\n          \"formula\",\n          \"rollup\",\n          \"created_time\",\n          \"last_edited_time\"\n        ],\n        select_rule: \"For select and multi_select fields, only use the provided option values exactly\",\n        date_format: \"ISO 8601 format (YYYY-MM-DD)\"\n      }\n    }\n  }\n];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [304, 208],
+      "position": [464, 0],
       "id": "3d52fbe7-9f61-4247-a8e5-0263affd447e",
       "name": "Prepare Notion schema context"
     },
@@ -86,7 +25,7 @@
       },
       "type": "n8n-nodes-base.notion",
       "typeVersion": 2.2,
-      "position": [-64, 208],
+      "position": [16, 0],
       "id": "cbb87c19-d15c-429e-a5b0-7db93bffce93",
       "name": "Get a database",
       "credentials": {
@@ -102,13 +41,13 @@
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [880, 0],
+      "position": [912, 0],
       "id": "9143c972-d0e2-467a-904d-a368c724ba69",
       "name": "Parse and Validate"
     },
     {
       "parameters": {
-        "jsCode": "const schema = $node[\"Transform Schema\"].json;\nconst email  = $input.first().json;\n\nconst schemaMap = Object.fromEntries(schema.fields.map(f => [f.name, f]));\nconst READ_ONLY = [\"formula\", \"rollup\", \"created_time\", \"last_edited_time\"];\n\nfunction stripEmoji(s) { return s.replace(/[\\u{1F300}-\\u{1FAFF}]/gu, '').replace(/^[\\s\\W]+/, '').trim(); }\nfunction extractName(from) { const m = from.match(/^\"?([^\"<]+)\"?\\s*</); return m ? m[1].replace(/透過 Notion 的 /, '').trim() : from; }\n\nfunction safeSelect(field, value) {\n  const opts = field.options ?? [];\n  return opts.includes(value) ? value : (opts[0] ?? null);\n}\n\nfunction safeMultiSelect(field, values) {\n  const opts = field.options ?? [];\n  return values.filter(v => opts.includes(v));\n}\n\nfunction inferPriority(field, subject, snippet) {\n  const t = (subject + ' ' + snippet).toLowerCase();\n  const raw = /urgent|asap|critical/.test(t) ? 'High'\n             : /fyi|newsletter|unsubscribe/.test(t) ? 'Low'\n             : 'Medium';\n  return safeSelect(field, raw);\n}\n\nfunction inferTags(field, labels, subject) {\n  const raw = [\n    ...labels.map(l => l.name.replace('CATEGORY_', '').toLowerCase()),\n    /notion/.test(subject.toLowerCase()) ? 'notion' : null,\n    /collab|協作/.test(subject) ? 'collaboration' : null,\n    /update/.test(subject.toLowerCase()) ? 'updates' : null,\n  ].filter(Boolean);\n  return safeMultiSelect(field, [...new Set(raw)]);\n}\n\n// Heuristic: guess which field serves which semantic role by name keywords\nfunction guessRole(name) {\n  const n = name.toLowerCase();\n  if (/priority/.test(n))                           return 'priority';\n  if (/status/.test(n))                             return 'status';\n  if (/due|date|deadline|schedule/.test(n))         return 'date';\n  if (/tag|label|categor|topic/.test(n))            return 'tags';\n  if (/desc|note|summary|detail|body/.test(n))      return 'description';\n  if (/request|from|sender|contact|assign/.test(n)) return 'requestor';\n  return null;\n}\n\nconst fields = {};\nconst skipped = [];\nlet task_name = stripEmoji(email.Subject); // title always comes from subject\n\nschema.fields.forEach(f => {\n  if (READ_ONLY.includes(f.type)) { skipped.push(f.name); return; }\n  if (f.type === 'title') return; // handled separately above\n\n  const role = guessRole(f.name);\n\n  if (f.type === 'status') {\n    fields[f.name] = safeSelect(f, 'Not Started');\n  } else if (f.type === 'select' && role === 'priority') {\n    fields[f.name] = inferPriority(f, email.Subject, email.snippet);\n  } else if (f.type === 'select') {\n    fields[f.name] = safeSelect(f, f.options?.[0] ?? null);\n  } else if (f.type === 'multi_select' && role === 'tags') {\n    fields[f.name] = inferTags(f, email.labels ?? [], email.Subject);\n  } else if (f.type === 'multi_select') {\n    fields[f.name] = [];\n  } else if (f.type === 'date') {\n    fields[f.name] = new Date(parseInt(email.internalDate) + 7 * 864e5).toISOString().split('T')[0];\n  } else if (f.type === 'rich_text' && role === 'description') {\n    fields[f.name] = (email.snippet ?? '').slice(0, 200).trim();\n  } else if (f.type === 'rich_text' && role === 'requestor') {\n    fields[f.name] = extractName(email.From ?? '');\n  } else if (f.type === 'rich_text') {\n    // unknown rich_text field — leave empty, LLM would fill this in real flow\n    fields[f.name] = '';\n  } else if (f.type === 'checkbox') {\n    fields[f.name] = false;\n  } else if (f.type === 'number') {\n    fields[f.name] = null;\n  }\n  // url, email, phone, people, relation — skip, no email data to map\n});\n\n// Drop null/empty values to keep the payload clean\nconst cleanFields = Object.fromEntries(\n  Object.entries(fields).filter(([_, v]) =>\n    v !== null && v !== '' && !(Array.isArray(v) && v.length === 0)\n  )\n);\n\nreturn [{ json: {\n  task_name,\n  fields: cleanFields,\n  confidence: \"medium\",\n  skipped,\n  notes: `From ${(email.From ?? '').match(/@([^>]+)/)?.[1] ?? 'unknown'}. Validated against schema \"${schema.database_name}\".`\n}}];"
+        "jsCode": "const schema = $node[\"Transform Schema\"].json;\nconst email  = $node[\"Trigger by Email\"].json;\n\nconst schemaMap = Object.fromEntries(schema.fields.map(f => [f.name, f]));\nconst READ_ONLY = [\"formula\", \"rollup\", \"created_time\", \"last_edited_time\"];\n\nfunction stripEmoji(s) { return s.replace(/[\\u{1F300}-\\u{1FAFF}]/gu, '').replace(/^[\\s\\W]+/, '').trim(); }\nfunction extractName(from) { const m = from.match(/^\"?([^\"<]+)\"?\\s*</); return m ? m[1].replace(/透過 Notion 的 /, '').trim() : from; }\n\nfunction safeSelect(field, value) {\n  const opts = field.options ?? [];\n  return opts.includes(value) ? value : (opts[0] ?? null);\n}\n\nfunction safeMultiSelect(field, values) {\n  const opts = field.options ?? [];\n  return values.filter(v => opts.includes(v));\n}\n\nfunction inferPriority(field, subject, snippet) {\n  const t = (subject + ' ' + snippet).toLowerCase();\n  const raw = /urgent|asap|critical/.test(t) ? 'High'\n             : /fyi|newsletter|unsubscribe/.test(t) ? 'Low'\n             : 'Medium';\n  return safeSelect(field, raw);\n}\n\nfunction inferTags(field, labels, subject) {\n  const raw = [\n    ...labels.map(l => l.name.replace('CATEGORY_', '').toLowerCase()),\n    /notion/.test(subject.toLowerCase()) ? 'notion' : null,\n    /collab|協作/.test(subject) ? 'collaboration' : null,\n    /update/.test(subject.toLowerCase()) ? 'updates' : null,\n  ].filter(Boolean);\n  return safeMultiSelect(field, [...new Set(raw)]);\n}\n\n// Heuristic: guess which field serves which semantic role by name keywords\nfunction guessRole(name) {\n  const n = name.toLowerCase();\n  if (/priority/.test(n))                           return 'priority';\n  if (/status/.test(n))                             return 'status';\n  if (/due|date|deadline|schedule/.test(n))         return 'date';\n  if (/tag|label|categor|topic/.test(n))            return 'tags';\n  if (/desc|note|summary|detail|body/.test(n))      return 'description';\n  if (/request|from|sender|contact|assign/.test(n)) return 'requestor';\n  return null;\n}\n\nconst fields = {};\nconst skipped = [];\nlet task_name = stripEmoji(email.Subject); // title always comes from subject\n\nschema.fields.forEach(f => {\n  if (READ_ONLY.includes(f.type)) { skipped.push(f.name); return; }\n  if (f.type === 'title') return; // handled separately above\n\n  const role = guessRole(f.name);\n\n  if (f.type === 'status') {\n    fields[f.name] = safeSelect(f, 'Not Started');\n  } else if (f.type === 'select' && role === 'priority') {\n    fields[f.name] = inferPriority(f, email.Subject, email.snippet);\n  } else if (f.type === 'select') {\n    fields[f.name] = safeSelect(f, f.options?.[0] ?? null);\n  } else if (f.type === 'multi_select' && role === 'tags') {\n    fields[f.name] = inferTags(f, email.labels ?? [], email.Subject);\n  } else if (f.type === 'multi_select') {\n    fields[f.name] = [];\n  } else if (f.type === 'date') {\n    fields[f.name] = new Date(parseInt(email.internalDate) + 7 * 864e5).toISOString().split('T')[0];\n  } else if (f.type === 'rich_text' && role === 'description') {\n    fields[f.name] = (email.snippet ?? '').slice(0, 200).trim();\n  } else if (f.type === 'rich_text' && role === 'requestor') {\n    fields[f.name] = extractName(email.From ?? '');\n  } else if (f.type === 'rich_text') {\n    // unknown rich_text field — leave empty, LLM would fill this in real flow\n    fields[f.name] = '';\n  } else if (f.type === 'checkbox') {\n    fields[f.name] = false;\n  } else if (f.type === 'number') {\n    fields[f.name] = null;\n  }\n  // url, email, phone, people, relation — skip, no email data to map\n});\n\n// Drop null/empty values to keep the payload clean\nconst cleanFields = Object.fromEntries(\n  Object.entries(fields).filter(([_, v]) =>\n    v !== null && v !== '' && !(Array.isArray(v) && v.length === 0)\n  )\n);\n\nreturn [{ json: {\n  task_name,\n  fields: cleanFields,\n  confidence: \"medium\",\n  skipped,\n  notes: `From ${(email.From ?? '').match(/@([^>]+)/)?.[1] ?? 'unknown'}. Validated against schema \"${schema.database_name}\".`\n}}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -122,7 +61,7 @@
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [128, 208],
+      "position": [240, 0],
       "id": "0af7f14d-1193-4ec8-87fb-ecd13bae8ac9",
       "name": "Transform Schema"
     },
@@ -132,7 +71,7 @@
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1104, 0],
+      "position": [1136, 0],
       "id": "0ea3972d-56f6-4fa8-b226-14a6193ddc04",
       "name": "Transform to Notion API"
     },
@@ -149,7 +88,7 @@
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
-      "position": [1312, 0],
+      "position": [1360, 0],
       "id": "64cd9454-c0b3-40c2-98c6-db171cca2c06",
       "name": "HTTP Request",
       "credentials": {
@@ -158,37 +97,26 @@
           "name": "Notion account"
         }
       }
+    },
+    {
+      "parameters": {
+        "inputSource": "jsonExample",
+        "jsonExample": "\n  \n{\n  \n  \n\"id\": \"19e79a17b14c4985\",\n  \n  \n\"threadId\": \"19e79a17b14c4985\",\n  \n  \n\"snippet\": \"Merged #9 into main. — Reply to this email directly, view it on GitHub, or unsubscribe. You are receiving this because you authored the thread. Message ID: &lt;kdotwei/email-assistent/pull/9/\",\n  \n  \n\"payload\": {\n  \n  \n  \n\"mimeType\": \"multipart/alternative\"\n  \n  \n},\n  \n  \n\"sizeEstimate\": 8487,\n  \n  \n\"historyId\": \"2828113\",\n  \n  \n\"internalDate\": \"1780157086000\",\n  \n  \n\"labels\": [\n  \n  \n  \n{\n  \n  \n  \n  \n\"id\": \"INBOX\",\n  \n  \n  \n  \n\"name\": \"INBOX\"\n  \n  \n  \n},\n  \n  \n  \n{\n  \n  \n  \n  \n\"id\": \"IMPORTANT\",\n  \n  \n  \n  \n\"name\": \"IMPORTANT\"\n  \n  \n  \n},\n  \n  \n  \n{\n  \n  \n  \n  \n\"id\": \"CATEGORY_UPDATES\",\n  \n  \n  \n  \n\"name\": \"CATEGORY_UPDATES\"\n  \n  \n  \n},\n  \n  \n  \n{\n  \n  \n  \n  \n\"id\": \"UNREAD\",\n  \n  \n  \n  \n\"name\": \"UNREAD\"\n  \n  \n  \n},\n  \n  \n  \n{\n  \n  \n  \n  \n\"id\": \"Label_8205191756754757025\",\n  \n  \n  \n  \n\"name\": \"GitHub\"\n  \n  \n  \n}\n  \n  \n],\n  \n  \n\"From\": \"\\\"K.WEI\\\" <notifications@github.com>\",\n  \n  \n\"To\": \"\\\"kdotwei/email-assistent\\\" <email-assistent@noreply.github.com>\",\n  \n  \n\"Cc\": \"\\\"楊皓程\\\" <bendoris0509@gmail.com>, Author <author@noreply.github.com>\",\n  \n  \n\"Subject\": \"Re: [kdotwei/email-assistent] Use same credential across runs (PR #9)\"\n  \n}\n"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [-208, 0],
+      "id": "dfe0503a-1a10-4e0e-b49a-dd43745999de",
+      "name": "Trigger by Email"
     }
   ],
   "pinData": {},
   "connections": {
-    "When clicking ‘Execute workflow’": {
-      "main": [
-        [
-          {
-            "node": "Get a database",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Get a database": {
       "main": [
         [
           {
             "node": "Transform Schema",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Get many messages": {
-      "main": [
-        [
-          {
-            "node": "Mock LLM",
             "type": "main",
             "index": 0
           }
@@ -210,7 +138,7 @@
       "main": [
         [
           {
-            "node": "Get many messages",
+            "node": "Mock LLM",
             "type": "main",
             "index": 0
           }
@@ -249,6 +177,17 @@
           }
         ]
       ]
+    },
+    "Trigger by Email": {
+      "main": [
+        [
+          {
+            "node": "Get a database",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": false,
@@ -256,7 +195,7 @@
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "fa9d6133-3f75-4276-8ad1-4aa914f2fb62",
+  "versionId": "82b897ce-7264-4b78-bc9f-56f26bd915f6",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "fa666fc8686a7b34e6cfbfc6d4dc377c9a913996d04fcb2c7891509c084d2ced"

@@ -41,8 +41,8 @@
             "threadId": "={{ $json.threadId }}",
             "snippet": "={{ $json.snippet }}",
             "payload": "={{ $json.payload }}",
-            "internalDate": "={{ $json.internalDate }}",
             "historyId": "={{ $json.historyId }}",
+            "internalDate": "={{ $json.internalDate }}",
             "labels": "={{ $json.labels }}",
             "From": "={{ $json.From }}",
             "To": "={{ $json.To }}",
@@ -175,6 +175,7 @@
           "attemptToConvertTypes": false,
           "convertFieldsToString": true
         },
+        "mode": "each",
         "options": {}
       },
       "type": "n8n-nodes-base.executeWorkflow",
@@ -203,7 +204,7 @@
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "8f42e419-aac3-4de4-b400-baf0d42fbf45",
+  "versionId": "3de9e79a-6a87-4b89-96e8-beef96776248",
   "meta": {
     "instanceId": "fa666fc8686a7b34e6cfbfc6d4dc377c9a913996d04fcb2c7891509c084d2ced",
     "templateCredsSetupCompleted": true
