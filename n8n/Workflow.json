@@ -28,6 +28,40 @@
           "name": "Gmail account"
         }
       }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "databasePage",
+        "databaseId": {
+          "__rl": true,
+          "value": "370e76e1-51bb-802e-9e34-e2aa051a0929",
+          "mode": "list",
+          "cachedResultName": "任務追蹤工具",
+          "cachedResultUrl": "https://www.notion.so/370e76e151bb802e9e34e2aa051a0929"
+        },
+        "title": "this is a test todo",
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "狀態|status",
+              "statusValue": "未開始"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [48, -32],
+      "id": "5c394480-5712-475e-aa5f-2364fe7d7bb1",
+      "name": "Create a database page",
+      "credentials": {
+        "notionOAuth2Api": {
+          "id": "m92YHm34YNqL0zqL",
+          "name": "Notion account"
+        }
+      }
     }
   ],
   "pinData": {},
@@ -52,7 +86,7 @@
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "9c24fa0e-ed76-4f25-bf25-941d5b046459",
+  "versionId": "5904f1d0-9a87-46fc-a0d5-f5e5e1da79c6",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "affbab9d455e9c480b44177bccfa1297b1480f1815abac4922a9dbf041244ce6"
