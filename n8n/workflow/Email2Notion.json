@@ -37,23 +37,13 @@
     },
     {
       "parameters": {
-        "jsCode": "// The mock LLM node already outputs a JS object, not a JSON string\n// So we skip parsing entirely and use it directly\nconst raw = $input.first().json;\n\n// If it came from a real LLM node it would be a string — handle both cases\nlet parsed;\nif (typeof raw === \"string\") {\n  try {\n    const cleaned = raw.replace(/```json|```/g, \"\").trim();\n    parsed = JSON.parse(cleaned);\n  } catch (e) {\n    return [{ json: { success: false, error: \"JSON parse failed\", raw } }];\n  }\n} else {\n  // Already an object (mock node or well-behaved LLM node)\n  parsed = raw;\n}\n\n// Validate required fields\nif (!parsed.task_name || typeof parsed.task_name !== \"string\") {\n  return [{ json: { success: false, error: \"Missing task_name\", raw } }];\n}\n\nconst READ_ONLY_TYPES = [\"formula\", \"rollup\", \"created_time\", \"last_edited_time\"];\nconst schema = $node[\"Transform Schema\"].json.fields;\nconst schemaMap = Object.fromEntries(schema.map(f => [f.name, f]));\n\nconst validFields = {};\nconst skipped = [];\nconst invalid = [];\n\nfor (const [key, value] of Object.entries(parsed.fields ?? {})) {\n  const fieldDef = schemaMap[key];\n\n  if (!fieldDef) {\n    invalid.push({ field: key, reason: \"Not in schema\" });\n    continue;\n  }\n\n  if (READ_ONLY_TYPES.includes(fieldDef.type)) {\n    skipped.push({ field: key, reason: \"Read-only\" });\n    continue;\n  }\n\n  if (fieldDef.type === \"select\" && !fieldDef.options.includes(value)) {\n    invalid.push({ field: key, reason: `\"${value}\" not in options: ${fieldDef.options.join(\", \")}` });\n    continue;\n  }\n\n  if (fieldDef.type === \"multi_select\") {\n    const badOptions = value.filter(v => !fieldDef.options.includes(v));\n    if (badOptions.length > 0) {\n      invalid.push({ field: key, reason: `Invalid options: ${badOptions.join(\", \")}` });\n      continue;\n    }\n  }\n\n  validFields[key] = value;\n}\n\nreturn [{\n  json: {\n    success: true,\n    confidence: parsed.confidence ?? \"medium\",\n    notes: parsed.notes ?? \"\",\n    task_name: parsed.task_name,\n    valid_fields: validFields,\n    skipped,\n    invalid,\n  }\n}];"
+        "jsCode": "// The mock LLM node already outputs a JS object, not a JSON string\n// So we skip parsing entirely and use it directly\nconst raw = $input.first().json.outputs[0].outputs[0].messages[0].message\n\n// If it came from a real LLM node it would be a string — handle both cases\nlet parsed;\nif (typeof raw === \"string\") {\n  try {\n    let cleaned = raw\n      .replace(/^```(?:json)?\\s*/i, '')  // opening fence\n      .replace(/\\s*```$/i, '')            // closing fence\n      .trim();\n    parsed = JSON.parse(cleaned);\n  } catch (e) {\n    return [{ json: { success: false, error: \"JSON parse failed:\" + e, raw } }];\n  }\n} else {\n  // Already an object (mock node or well-behaved LLM node)\n  parsed = raw;\n}\n\n// Validate required fields\nif (!parsed.task_name || typeof parsed.task_name !== \"string\") {\n  return [{ json: { success: false, error: \"Missing task_name\", raw } }];\n}\n\nconst READ_ONLY_TYPES = [\"formula\", \"rollup\", \"created_time\", \"last_edited_time\"];\nconst schema = $node[\"Transform Schema\"].json.fields;\nconst schemaMap = Object.fromEntries(schema.map(f => [f.name, f]));\n\nconst validFields = {};\nconst skipped = [];\nconst invalid = [];\n\nfor (const [key, value] of Object.entries(parsed.fields ?? {})) {\n  const fieldDef = schemaMap[key];\n\n  if (!fieldDef) {\n    invalid.push({ field: key, reason: \"Not in schema\" });\n    continue;\n  }\n\n  if (READ_ONLY_TYPES.includes(fieldDef.type)) {\n    skipped.push({ field: key, reason: \"Read-only\" });\n    continue;\n  }\n\n  if (fieldDef.type === \"select\" && !fieldDef.options.includes(value)) {\n    invalid.push({ field: key, reason: `\"${value}\" not in options: ${fieldDef.options.join(\", \")}` });\n    continue;\n  }\n\n  if (fieldDef.type === \"multi_select\") {\n    const badOptions = value.filter(v => !fieldDef.options.includes(v));\n    if (badOptions.length > 0) {\n      invalid.push({ field: key, reason: `Invalid options: ${badOptions.join(\", \")}` });\n      continue;\n    }\n  }\n\n  validFields[key] = value;\n}\n\nreturn [{\n  json: {\n    success: true,\n    confidence: parsed.confidence ?? \"medium\",\n    notes: parsed.notes ?? \"\",\n    task_name: parsed.task_name,\n    valid_fields: validFields,\n    skipped,\n    invalid,\n  }\n}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [912, 0],
       "id": "9143c972-d0e2-467a-904d-a368c724ba69",
       "name": "Parse and Validate"
-    },
-    {
-      "parameters": {
-        "jsCode": "const schema = $node[\"Transform Schema\"].json;\nconst email  = $node[\"Trigger by Email\"].json;\n\nconst schemaMap = Object.fromEntries(schema.fields.map(f => [f.name, f]));\nconst READ_ONLY = [\"formula\", \"rollup\", \"created_time\", \"last_edited_time\"];\n\nfunction stripEmoji(s) { return s.replace(/[\\u{1F300}-\\u{1FAFF}]/gu, '').replace(/^[\\s\\W]+/, '').trim(); }\nfunction extractName(from) { const m = from.match(/^\"?([^\"<]+)\"?\\s*</); return m ? m[1].replace(/透過 Notion 的 /, '').trim() : from; }\n\nfunction safeSelect(field, value) {\n  const opts = field.options ?? [];\n  return opts.includes(value) ? value : (opts[0] ?? null);\n}\n\nfunction safeMultiSelect(field, values) {\n  const opts = field.options ?? [];\n  return values.filter(v => opts.includes(v));\n}\n\nfunction inferPriority(field, subject, snippet) {\n  const t = (subject + ' ' + snippet).toLowerCase();\n  const raw = /urgent|asap|critical/.test(t) ? 'High'\n             : /fyi|newsletter|unsubscribe/.test(t) ? 'Low'\n             : 'Medium';\n  return safeSelect(field, raw);\n}\n\nfunction inferTags(field, labels, subject) {\n  const raw = [\n    ...labels.map(l => l.name.replace('CATEGORY_', '').toLowerCase()),\n    /notion/.test(subject.toLowerCase()) ? 'notion' : null,\n    /collab|協作/.test(subject) ? 'collaboration' : null,\n    /update/.test(subject.toLowerCase()) ? 'updates' : null,\n  ].filter(Boolean);\n  return safeMultiSelect(field, [...new Set(raw)]);\n}\n\n// Heuristic: guess which field serves which semantic role by name keywords\nfunction guessRole(name) {\n  const n = name.toLowerCase();\n  if (/priority/.test(n))                           return 'priority';\n  if (/status/.test(n))                             return 'status';\n  if (/due|date|deadline|schedule/.test(n))         return 'date';\n  if (/tag|label|categor|topic/.test(n))            return 'tags';\n  if (/desc|note|summary|detail|body/.test(n))      return 'description';\n  if (/request|from|sender|contact|assign/.test(n)) return 'requestor';\n  return null;\n}\n\nconst fields = {};\nconst skipped = [];\nlet task_name = stripEmoji(email.Subject); // title always comes from subject\n\nschema.fields.forEach(f => {\n  if (READ_ONLY.includes(f.type)) { skipped.push(f.name); return; }\n  if (f.type === 'title') return; // handled separately above\n\n  const role = guessRole(f.name);\n\n  if (f.type === 'status') {\n    fields[f.name] = safeSelect(f, 'Not Started');\n  } else if (f.type === 'select' && role === 'priority') {\n    fields[f.name] = inferPriority(f, email.Subject, email.snippet);\n  } else if (f.type === 'select') {\n    fields[f.name] = safeSelect(f, f.options?.[0] ?? null);\n  } else if (f.type === 'multi_select' && role === 'tags') {\n    fields[f.name] = inferTags(f, email.labels ?? [], email.Subject);\n  } else if (f.type === 'multi_select') {\n    fields[f.name] = [];\n  } else if (f.type === 'date') {\n    fields[f.name] = new Date(parseInt(email.internalDate) + 7 * 864e5).toISOString().split('T')[0];\n  } else if (f.type === 'rich_text' && role === 'description') {\n    fields[f.name] = (email.snippet ?? '').slice(0, 200).trim();\n  } else if (f.type === 'rich_text' && role === 'requestor') {\n    fields[f.name] = extractName(email.From ?? '');\n  } else if (f.type === 'rich_text') {\n    // unknown rich_text field — leave empty, LLM would fill this in real flow\n    fields[f.name] = '';\n  } else if (f.type === 'checkbox') {\n    fields[f.name] = false;\n  } else if (f.type === 'number') {\n    fields[f.name] = null;\n  }\n  // url, email, phone, people, relation — skip, no email data to map\n});\n\n// Drop null/empty values to keep the payload clean\nconst cleanFields = Object.fromEntries(\n  Object.entries(fields).filter(([_, v]) =>\n    v !== null && v !== '' && !(Array.isArray(v) && v.length === 0)\n  )\n);\n\nreturn [{ json: {\n  task_name,\n  fields: cleanFields,\n  confidence: \"medium\",\n  skipped,\n  notes: `From ${(email.From ?? '').match(/@([^>]+)/)?.[1] ?? 'unknown'}. Validated against schema \"${schema.database_name}\".`\n}}];"
-      },
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [688, 0],
-      "id": "145b462b-8c39-4e90-8a08-f03fd15e1c36",
-      "name": "Mock LLM"
     },
     {
       "parameters": {
@@ -108,6 +98,56 @@
       "position": [-208, 0],
       "id": "dfe0503a-1a10-4e0e-b49a-dd43745999de",
       "name": "Trigger by Email"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://langflow:7860/api/v1/run/0621c20c-9aaa-4175-bfd0-817b84d05a4a",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "stream",
+              "value": "false"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "input_value",
+              "value": "=={{ JSON.stringify({\n  schema: $json.schema,\n  email: $('Trigger by Email').item.json\n}) }}"
+            },
+            {
+              "name": "output_type",
+              "value": "chat"
+            },
+            {
+              "name": "input_type",
+              "value": "chat"
+            },
+            {
+              "name": "session_id",
+              "value": "={{ $('Trigger by Email').item.json.id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [688, 0],
+      "id": "03d299f4-3884-4ecc-a063-75798a1dfb60",
+      "name": "HTTP Request1",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "langflowApiEnvCredential",
+          "name": "Langflow API Key"
+        }
+      }
     }
   ],
   "pinData": {},
@@ -123,22 +163,11 @@
         ]
       ]
     },
-    "Mock LLM": {
-      "main": [
-        [
-          {
-            "node": "Parse and Validate",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Prepare Notion schema context": {
       "main": [
         [
           {
-            "node": "Mock LLM",
+            "node": "HTTP Request1",
             "type": "main",
             "index": 0
           }
@@ -188,6 +217,17 @@
           }
         ]
       ]
+    },
+    "HTTP Request1": {
+      "main": [
+        [
+          {
+            "node": "Parse and Validate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": false,
@@ -195,11 +235,12 @@
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "82b897ce-7264-4b78-bc9f-56f26bd915f6",
+  "versionId": "73a9c9d1-5865-4286-a710-7983c5383c8e",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "fa666fc8686a7b34e6cfbfc6d4dc377c9a913996d04fcb2c7891509c084d2ced"
   },
+  "nodeGroups": [],
   "id": "gftQRLvLgY1jAZb1",
   "tags": []
 }

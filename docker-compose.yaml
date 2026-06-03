@@ -1,6 +1,6 @@
 services:
   n8n:
-    image: docker.n8n.io/n8nio/n8n
+    image: docker.n8n.io/n8nio/n8n:2.23.2
     container_name: n8n
     restart: unless-stopped
     env_file:
@@ -36,16 +36,23 @@ services:
       - workflow_network
 
   langflow:
-    image: langflowai/langflow:latest
+    image: langflowai/langflow:1.9.0
     container_name: langflow
     restart: unless-stopped
+    user: root
     ports:
       - "7860:7860"
     environment:
       - TZ=Asia/Taipei
       - LANGFLOW_DATABASE_URL=sqlite:////app/langflow/langflow.db
+      - LANGFLOW_LOAD_FLOWS_PATH=/flows
+      - LANGFLOW_API_KEY_SOURCE=env
+      - LANGFLOW_API_KEY=${LANGFLOW_API_KEY}
+      - LANGFLOW_VARIABLES_TO_GET_FROM_ENVIRONMENT=VLLM_API_KEY # fetch the environment variable and make it available as global variable in Langflow
+      - VLLM_API_KEY=${VLLM_API_KEY}
     volumes:
       - langflow_data:/app/langflow
+      - ./langflow:/flows:ro
     networks:
       - workflow_network
 

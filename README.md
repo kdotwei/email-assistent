@@ -144,7 +144,7 @@ NOTION_TOKEN=
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
 LANGFLOW_API_KEY=
-OPENAI_API_KEY=
+VLLM_API_KEY=
 ```
 
 Supported automatic credentials:
@@ -152,7 +152,6 @@ Supported automatic credentials:
 - `NOTION_TOKEN` imports a `Notion account` credential using the n8n `notionApi` type.
 - `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` import a `Gmail account` OAuth2 credential using the n8n `gmailOAuth2` type.
 - `LANGFLOW_API_KEY` imports a `Langflow API Key` header credential for HTTP Request nodes.
-- `OPENAI_API_KEY` imports an `OpenAI API` credential using the n8n `openAiApi` type.
 
 Google OAuth is only partially automated. The startup import can prefill the Google Client ID and Client Secret, but it cannot complete Google consent or create Gmail access and refresh tokens. After startup, open the `Gmail account` credential in the n8n UI and run `Sign in with Google` once.
 
